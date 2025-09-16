@@ -103,7 +103,7 @@ def verifyOTP(email,otp):
 def sendPasswordResetEmail(email):
     username=None    
     reset_token=createResetPasswordToken(email)
-    reset_link=f"http://localhost:3000/resetpassword/{email}/{reset_token}/"
+    reset_link=f"https://effulgent-torte-d90e0a.netlify.app/resetpassword/{email}/{reset_token}/"
     try:
         with connection.cursor() as cursor:
             print(email)
