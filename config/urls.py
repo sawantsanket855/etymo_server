@@ -16,10 +16,17 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from etymo.database import check_connection,get_word_data
+from etymo.api import check_connection,get_word_data,login_api,register_api,sendOTP_api, sendPasswordResetEmail_api, updatePassword_api,verifyOTP_api
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('check_connection/', check_connection),
-    path('get_word_data/',get_word_data)
+    path('get_word_data/',get_word_data),
+    path('login/',login_api),
+    path('register/',register_api),
+    path('send_otp/',sendOTP_api),
+    path('verify_otp/',verifyOTP_api),
+    path('update_password/',updatePassword_api),
+    path('send_password_reset_email/',sendPasswordResetEmail_api),
+    
 ]

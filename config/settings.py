@@ -39,9 +39,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
+    'rest_framework'
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -49,7 +51,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -79,8 +81,8 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'etymo',           # Replace with your actual DB name
-#         'USER': 'sanket',         # Replace with your PostgreSQL username
+#         'NAME': 'postgres',           # Replace with your actual DB name
+#         'USER': 'postgres',         # Replace with your PostgreSQL username
 #         'PASSWORD': 'Sanket@2146', # Replace with your PostgreSQL password
 #         'HOST': 'localhost',      # Use '127.0.0.1' if needed
 #         'PORT': '5432',           # Default PostgreSQL port
@@ -138,4 +140,20 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_ALL_ORIGINS = True  # Use cautiously in development
 CORS_ALLOW_HEADERS =[
     "ngrok-skip-browser-warning",
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",    # ✅ allow JSON
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
 ]
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'sanketsawant4123@gmail.com'
+EMAIL_HOST_PASSWORD = 'trcq atxm ykbc hyzh'
