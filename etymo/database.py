@@ -1,24 +1,168 @@
 from django.db import connection
-from django.http import HttpResponse,JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.core.mail import EmailMultiAlternatives
+import random
+from datetime import datetime, timezone
+import secrets
 
-def check_connection(request):
-    with connection.cursor() as cursor:
-        cursor.execute("select * from student")
-        rows=cursor.fetchall()
-        print(rows)
-        return HttpResponse(rows[0][1])
+def login(email,password):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                           create table IF NOT EXISTS tbl_login_data(col_username TEXT,col_email TEXT UNIQUE,col_password TEXT);
+                           select * from tbl_login_data where col_email = '{email}' and col_password = '{password}';""")
+            rows=cursor.fetchall()
+            if rows:
+                return 'correct credentials'
+            else:
+                return 'invalid credentials'
+    
+    except Exception as e:
+        print(e)
+        return 'server error'
+    
+def register(username,email,password):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                           create table IF NOT EXISTS tbl_login_data(col_username TEXT,col_email TEXT UNIQUE,col_password TEXT);
+                           insert into tbl_login_data (col_username,col_email,col_password) values('{username}','{email}','{password}');""")
+            rows=cursor.rowcount
+            print(rows)
+            return 'registered'
+            
+    except Exception as e:
+        return 'email already exist'
 
-@csrf_exempt
-def get_word_data(request):
-    words_list = request.GET.getlist('highlightedWords')
-    print(words_list)
-    words=tuple(words_list)
-    # words=('aspiration','asthma','bradycardia')
-    with connection.cursor() as cursor:
-        cursor.execute(f"select * from tbl_medical_terms where medical_term in {words}")
-        rows=cursor.fetchall()
-        return JsonResponse({'results':rows})
+
+def generate_otp():
+    otp=random.randint(1000,9999)
+    return otp
+
+def sendOTP(email):
+    otp=generate_otp()
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(f'''CREATE TABLE IF NOT EXISTS tbl_otp(
+                           col_email_id TEXT,
+                           col_otp INT,
+                           col_gen_time TIMESTAMPTZ DEFAULT NOW(),
+                           col_isused BOOLEAN DEFAULT FALSE);
+                           insert into tbl_otp(col_email_id,col_otp) values('{email}','{otp}');''')
+    except Exception as e:
+        return 'error'
+    
+    try:
+        print('start otp sending')
+        subject = "Welcome to GST Web Portal !"
+        from_email = "sanketsawant4123@gmail.com"
+        to = [email]
+        text_content = "OTP."
+        html_content = f"<p><b>{otp}</b> This is your otp for login. Please don't share it with others</p>"
+
+        msg = EmailMultiAlternatives(subject, text_content, from_email, to)
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
+    except Exception as e:
+        return 'error'
+    return "otp sent"
+
+
+def verifyOTP(email,otp):
+    if not otp.isnumeric():
+        return 'incorrect otp'
+    try:
+        with connection.cursor() as cursor:
+            # cursor.execute(f"select * from tbl_otp where col_email_id='{email}' AND col_gen_time > NOW() - INTERVAL '5 minutes' ORDER BY col_gen_time DESC LIMIT 5")
+            cursor.execute(f"select * from tbl_otp where col_email_id='{email}' ORDER BY col_gen_time DESC LIMIT 1")
+            rows=cursor.fetchall()
+            if(rows):
+                data=rows[0]
+                diff=datetime.now(timezone.utc)-data[2]
+                if(diff.total_seconds()<300 and not data[3]):
+                    print('otp gen',data[1])
+                    if(data[1]==int(otp)):
+                        print('correct otp')
+                        try:
+                            cursor.execute(f"update tbl_otp SET col_isused = True WHERE col_email_id ='{email}' AND col_otp='{data[1]}';")
+                            print('otp status updated')
+                        except Exception as e:
+                            print(e)
+                            return 'server error'
+                    else:
+                        return 'incorrect otp'
+                else:
+                    return 'otp expired'
+            else:
+                return 'otp not sent'
+            return 'correct otp'
+    except Exception as e:
+        print(e)
+        return 'error'
+    
+def sendPasswordResetEmail(email):
+    username=None    
+    reset_token=createResetPasswordToken(email)
+    reset_link=f"http://localhost:3000/resetpassword/{email}/{reset_token}/"
+    try:
+        with connection.cursor() as cursor:
+            print(email)
+            cursor.execute(f"""
+                           create table IF NOT EXISTS tbl_login_data(col_username TEXT,col_email TEXT UNIQUE,col_password TEXT);
+                           select col_username from tbl_login_data where col_email ='{email}'""")
+            rows=cursor.fetchall()
+            username=rows[0][0]
+            print(f'username is {username}')
+        subject = "Reset Password"
+        from_email="sanketsawant4123@gmail.com"
+        to=[email]
+        text_content='Reset Password'
+        html_content= f"<p>Hello {username},<br> We received a request to reset your password for your GST webportal account.<br>Click the link below to set a new password: <br><a href='{reset_link}'>reset_link</a><br>This link will expire in 15 minutes. If you did not request a password reset, you can safely ignore this email.</p>"
+        msg= EmailMultiAlternatives(subject,text_content,from_email,to)
+        msg.attach_alternative(html_content,"text/html")
+        msg.send()
+        return 'reset password email sent'
+    except Exception as e:
+         print(e)
+         return 'server error'
+
+def createResetPasswordToken(email):
+    reset_token=secrets.token_urlsafe(32)
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(f'''CREATE TABLE IF NOT EXISTS tbl_reset_token(
+                               col_email_id TEXT,
+                               col_reset_token TEXT,
+                               col_gen_time TIMESTAMPTZ DEFAULT NOW(),
+                               col_isused BOOLEAN DEFAULT FALSE);
+                               insert into tbl_reset_token(col_email_id,col_reset_token) values('{email}','{reset_token}');''') 
+            return reset_token
+
+    except Exception as e:
+        print(f'error: {e}')
+        return 0
+    
+def updatePassword(email,reset_token,password):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(f"SELECT col_email_id FROM tbl_reset_token where col_email_id='{email}' and col_reset_token='{reset_token}' and col_gen_time > NOW() - INTERVAL '15 minutes' and col_isused=False;")
+            rows=cursor.fetchall()
+            if rows:
+                cursor.execute(f'''update tbl_login_data set col_password='{password}' where col_email='{email}';
+                                   update tbl_reset_token set col_isused = TRUE where col_email_id='{email}' and col_reset_token='{reset_token}'
+                               ''')
+                return 'password changed'
+            else:
+                return 'token expired'
+    except Exception as e:
+        print(e)
+        return 'error'
+
+        
+    
+
+    
+
 
 
 
