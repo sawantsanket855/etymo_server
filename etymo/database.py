@@ -43,12 +43,19 @@ def sendOTP(email):
 
     try:
         with connection.cursor() as cursor:
-            cursor.execute(f'''CREATE TABLE IF NOT EXISTS tbl_otp(
-                           col_email_id TEXT,
-                           col_otp INT,
-                           col_gen_time TIMESTAMPTZ DEFAULT NOW(),
-                           col_isused BOOLEAN DEFAULT FALSE);
-                           insert into tbl_otp(col_email_id,col_otp) values('{email}','{otp}');''')
+            cursor.execute(f"""
+                            select * from tbl_login_data where col_email = '{email}' 
+                            """)
+            rows=cursor.rowcount
+            if(rows):
+                cursor.execute(f'''CREATE TABLE IF NOT EXISTS tbl_otp(
+                               col_email_id TEXT,
+                               col_otp INT,
+                               col_gen_time TIMESTAMPTZ DEFAULT NOW(),
+                               col_isused BOOLEAN DEFAULT FALSE);
+                               insert into tbl_otp(col_email_id,col_otp) values('{email}','{otp}');''')
+            else:
+                return 'email not registerd'
     except Exception as e:
         return 'error'
     
