@@ -6,7 +6,7 @@ from rest_framework.decorators import api_view
 
 
 
-from etymo.database import login, register, sendOTP, sendPasswordResetEmail, updatePassword, verifyOTP
+from etymo.database import *
 
 def check_connection(request):
     updatePassword('sawantsanket855@gmail.com','hPCHJFEmnhV03q74VX-HQv-ZL4layV2iTHnK3qWrIuU','Sanket@2146')
@@ -63,9 +63,95 @@ def updatePassword_api(request):
     result=updatePassword(data['email'],data['reset_token'],data['password'])
     return JsonResponse({'message':result})
     
+@api_view(['POST'])    
+def submit_request_api(request):
+    print('in function')
+    data=request.data
+    print(data)
+    documents= request.FILES.getlist('documents')
+    print(documents)
+    name=request.POST.get('name')
+    type=request.POST.get('type')
+    email=request.POST.get('email')
+    mobile=request.POST.get('mobile')
+    description=request.POST.get('description')
+    response= submit_request(name,type,email,mobile,description,documents)
+    return JsonResponse({'message':response})
 
+@api_view(['POST'])    
+def get_request_document_api(request):
+    data=request.data
+    try:
+        print('in function get_request_data_api')
+        response= get_request_document(data['id'])
+
+        print(f'data having {len(response)} data')
+        return JsonResponse({'result':response})
+    except Exception as e:
+        print('api call error')
+        print(e)
     
+@api_view(['POST'])    
+def get_request_data_api(request):
+    try:
+        print('in function get_request_data_api')
+        response= get_request_data()
+        response= JsonResponse({'result':response})
+        return response
+    except Exception as e:
+        print('api call error')
+        print(e)
 
 
 
 
+@api_view(['POST'])    
+def get_request_document_data_api(request):
+    data=request.data
+    print(data)
+    print(f'got id =',data['id'])
+    try:
+        print('in function get_request_document_data_api')
+        response= get_request_document_data(data['id'])
+        print(response)
+        file_data=response[1]
+        if isinstance(file_data, memoryview):
+            file_data = bytes(file_data)
+            print('converted to bytes')
+        response= HttpResponse(file_data,content_type=response[0])
+        return response
+    except Exception as e:
+        print('api call error')
+        print(e)
+
+
+@api_view(['POST'])    
+def ca_cs_registartion_api(request):
+    print('in function ca_cs_registartion_api')
+    data=request.data
+    print(data)
+    certificate= request.FILES.getlist('certificate')
+    IdProof= request.FILES.getlist('IdProof')
+    name=request.POST.get('name')
+    role=request.POST.get('role')
+    regNumber=request.POST.get('regNumber')
+    email=request.POST.get('email')
+    mobile=request.POST.get('mobile')
+    workingDays=request.POST.getlist('workingDays')
+    print(certificate)
+    print(IdProof)
+    print(name,role,email,mobile,regNumber,workingDays)
+    response= ca_cs_registartion(data)
+    return JsonResponse({'message':response})
+
+@api_view(['POST'])
+def update_request_status_api(request):
+    try:
+        data=request.data
+        print(data)
+        response= update_request_status(data['requestID'],data['requestStatus'],data['requestInstruction'])
+        return JsonResponse({'message':'okkkk'})
+    except Exception as e:
+        print('error',e)
+        return JsonResponse({'message':'server error'})
+    
