@@ -16,8 +16,8 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from etymo.api import check_connection,get_word_data,login_api,register_api,sendOTP_api, sendPasswordResetEmail_api, updatePassword_api,verifyOTP_api
-
+# from etymo.api import ca_cs_registartion_api, check_connection, get_request_data_api, get_request_document_api,get_word_data,login_api,register_api,sendOTP_api, sendPasswordResetEmail_api, submit_request_api, updatePassword_api,verifyOTP_api,get_request_document_data_api
+from etymo.api import *
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('check_connection/', check_connection),
@@ -28,5 +28,12 @@ urlpatterns = [
     path('verify_otp/',verifyOTP_api),
     path('update_password/',updatePassword_api),
     path('send_password_reset_email/',sendPasswordResetEmail_api),
+    path('submit_request/',submit_request_api),
+    path('get_request_data/',get_request_data_api),
+    path('get_request_document/',get_request_document_api),
+    path('get_request_document_data/',get_request_document_data_api),
+    path('submit_ca_cs_details/',ca_cs_registartion_api),
+    path('update_request_status/',update_request_status_api)
+
     
 ]
