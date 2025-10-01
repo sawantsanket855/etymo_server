@@ -173,7 +173,7 @@ def submit_request(name,type_,email,mobile,description,documents,):
         
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                            CREATE TABLE IF NOT EXISTS tbl_request(col_id SERIAL PRIMARY KEY, col_name TEXT,col_type TEXT ,col_email TEXT,col_mobile TEXT,col_description TEXT,col_status TEXT default 'Under Review',col_instruction TEXT DEFAULT '' ,col_created_at TIMESTAMPTZ default NOW());
+                            CREATE TABLE IF NOT EXISTS tbl_request(col_id SERIAL PRIMARY KEY, col_name TEXT,col_type TEXT ,col_email TEXT,col_mobile TEXT,col_description TEXT,col_status TEXT default 'Under Review',col_instruction TEXT DEFAULT '' ,col_created_at TIMESTAMPTZ default NOW(),col_assigned_ca_cs_id INT DEFAULT 0);
                             """)
             cursor.execute(f"""
                            INSERT INTO tbl_request (col_name,col_type,col_email,col_mobile,col_description)  VALUES (%s, %s, %s, %s, %s) RETURNING col_id;
@@ -221,6 +221,7 @@ def get_request_document(request_id):
             print(data)
             return data
     except Exception as e:
+        return []
         print(e)
 
     
@@ -236,7 +237,7 @@ def get_request_data():
             return data
     except Exception as e:
         print(e)
-        return tuple()
+        return []
 
 
 
@@ -260,8 +261,8 @@ def ca_cs_registartion(data):
     try:
         
         with connection.cursor() as cursor:
-            cursor.execute(f"""
-                            CREATE TABLE IF NOT EXISTS tbl_ca_cs(col_id SERIAL PRIMARY KEY, col_name TEXT,col_role TEXT, col_specialization TEXT ,col_email TEXT,col_mobile TEXT,col_regNumber TEXT,col_workingDays TEXT[], col_created_at TIMESTAMPTZ default NOW());
+            cursor.execute("""
+                            CREATE TABLE IF NOT EXISTS tbl_ca_cs(col_id SERIAL PRIMARY KEY, col_name TEXT,col_role TEXT, col_specialization TEXT ,col_email TEXT,col_mobile TEXT,col_regNumber TEXT,col_workingDays TEXT[], col_created_at TIMESTAMPTZ default NOW(),col_assigned_request INT[] DEFAULT '{}');
                             """)
             cursor.execute(f"""
                            INSERT INTO tbl_ca_cs (col_name,col_role,col_specialization, col_email,col_mobile,col_regNumber,col_workingDays) VALUES (%s, %s, %s, %s, %s ,%s, %s) RETURNING col_id;
@@ -311,3 +312,30 @@ def update_request_status(requestId,requestStatus,requestInstruction):
     except Exception as e:
         print(e)
         return 'server error'
+
+
+def get_ca_cs_data():
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                    select * from tbl_ca_cs;
+                """)
+            data=cursor.fetchall()
+            print(data)
+            return data
+    except Exception as e:
+        print(e)
+        return []
+    
+def assign_ca_cs(ca_cs_id,requestId):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                    UPDATE tbl_request SET col_assigned_ca_cs_id={ca_cs_id},col_status='Assigned' where col_id ={requestId};
+                    UPDATE tbl_ca_cs SET col_assigned_request= array_append(col_assigned_request, {requestId}) where col_id={ca_cs_id}
+                      """)
+            
+    except Exception as e:
+        print(e)
+
+            
