@@ -33,7 +33,8 @@ urlpatterns = [
     path('get_request_document/',get_request_document_api),
     path('get_request_document_data/',get_request_document_data_api),
     path('submit_ca_cs_details/',ca_cs_registartion_api),
-    path('update_request_status/',update_request_status_api)
-
+    path('update_request_status/',update_request_status_api),
+    path('get_ca_cs_data/',get_ca_cs_data_api), 
+    path('assign_ca_cs/',assign_ca_cs_api),
     
 ]

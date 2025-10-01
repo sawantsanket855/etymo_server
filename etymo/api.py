@@ -155,3 +155,27 @@ def update_request_status_api(request):
         print('error',e)
         return JsonResponse({'message':'server error'})
     
+
+@api_view(['POST'])    
+def get_ca_cs_data_api(request):
+    try:
+        print('in function get_request_data_api')
+        response= get_ca_cs_data()
+        response= JsonResponse({'result':response})
+        return response
+    except Exception as e:
+        print('api call error')
+        print(e)
+
+
+
+@api_view(['POST'])
+def assign_ca_cs_api(request):
+    try:
+        data=request.data
+        print(data)
+        response= assign_ca_cs(ca_cs_id=data['ca_cs_id'],requestId=data['request_id'])
+        return JsonResponse({'result':'success'})
+    except Exception as e:
+        print('error',e)
+        return JsonResponse({'result':'server error'})
