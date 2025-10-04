@@ -8,9 +8,9 @@ from rest_framework.decorators import api_view
 
 from etymo.database import *
 
-def check_connection(request):
-    updatePassword('sawantsanket855@gmail.com','hPCHJFEmnhV03q74VX-HQv-ZL4layV2iTHnK3qWrIuU','Sanket@2146')
-    return JsonResponse({'message':'email already exist'})
+# def check_connection(request):
+#     updatePassword('sawantsanket855@gmail.com','hPCHJFEmnhV03q74VX-HQv-ZL4layV2iTHnK3qWrIuU','Sanket@2146')
+#     return JsonResponse({'message':'email already exist'})
 
 @csrf_exempt
 def get_word_data(request):
@@ -28,8 +28,8 @@ def get_word_data(request):
 def login_api(request):
     print(request.method)
     data=request.data
-    result=login(data['email'],data['password'])  #checks login credentials
-    return JsonResponse({'message':result})
+    message,token=login(data['email'],data['password'],data['loginType'])  #checks login credentials
+    return JsonResponse({'message':message,'token':token})
   
     
 @api_view(['POST'])
@@ -75,7 +75,8 @@ def submit_request_api(request):
     email=request.POST.get('email')
     mobile=request.POST.get('mobile')
     description=request.POST.get('description')
-    response= submit_request(name,type,email,mobile,description,documents)
+    token=request.POST.get('token')
+    response= submit_request(name,type,email,mobile,description,documents,token)
     return JsonResponse({'message':response})
 
 @api_view(['POST'])    
@@ -179,3 +180,15 @@ def assign_ca_cs_api(request):
     except Exception as e:
         print('error',e)
         return JsonResponse({'result':'server error'})
+
+
+@api_view(['POST'])    
+def get_verified_request_data_api(request):
+    try:
+        print('in function get_request_data_api')
+        response= get_verified_request_data()
+        response= JsonResponse({'result':response})
+        return response
+    except Exception as e:
+        print('api call error')
+        print(e)

@@ -20,7 +20,7 @@ from django.urls import path
 from etymo.api import *
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('check_connection/', check_connection),
+    # path('check_connection/', check_connection),
     path('get_word_data/',get_word_data),
     path('login/',login_api),
     path('register/',register_api),
@@ -36,5 +36,6 @@ urlpatterns = [
     path('update_request_status/',update_request_status_api),
     path('get_ca_cs_data/',get_ca_cs_data_api), 
     path('assign_ca_cs/',assign_ca_cs_api),
+    path('get_verified_request_data/',get_verified_request_data_api),
     
 ]
