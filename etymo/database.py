@@ -1,31 +1,44 @@
 from django.db import connection
+import jwt
 from django.core.mail import EmailMultiAlternatives
 import random
 from datetime import datetime, timezone
 import secrets
 from psycopg2 import Binary
+from django.conf import settings
+from datetime import datetime, timedelta
 
-def login(email,password):
+def login(email,password,loginType):
     try:
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                           create table IF NOT EXISTS tbl_login_data(col_username TEXT,col_email TEXT UNIQUE,col_password TEXT);
-                           select * from tbl_login_data where col_email = '{email}' and col_password = '{password}';""")
-            rows=cursor.fetchall()
+                           create table IF NOT EXISTS tbl_login_data(col_username TEXT,col_email TEXT UNIQUE,col_password TEXT,col_login_type TEXT DEFAULT 'Agent');
+                           select col_email from tbl_login_data where col_email = '{email}' and col_password = '{password}' and col_login_type='{loginType}';""")
+            rows=cursor.fetchone()
             if rows:
-                return 'correct credentials'
+                print(f'data for jwt {rows}')
+                payload = {
+                       "email": rows[0],
+                       "exp": datetime.now(timezone.utc) + timedelta(seconds=settings.JWT_EXP_DELTA_SECONDS),
+                       "iat": datetime.now(timezone.utc),
+                     }
+                print(payload)
+
+                token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+                print(token)
+                return ('correct credentials',token)
             else:
-                return 'invalid credentials'
+                return ('invalid credentials','')
     
     except Exception as e:
         print(e)
-        return 'server error'
+        return ('server error','')
     
 def register(username,email,password):
     try:
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                           create table IF NOT EXISTS tbl_login_data(col_username TEXT,col_email TEXT UNIQUE,col_password TEXT);
+                           create table IF NOT EXISTS tbl_login_data(col_username TEXT,col_email TEXT UNIQUE,col_password TEXT,col_login_type TEXT DEFAULT 'Agent');
                            insert into tbl_login_data (col_username,col_email,col_password) values('{username}','{email}','{password}');""")
             rows=cursor.rowcount
             print(rows)
@@ -168,16 +181,16 @@ def updatePassword(email,reset_token,password):
         return 'error'
 
         
-def submit_request(name,type_,email,mobile,description,documents,):
+def submit_request(name,type_,email,mobile,description,documents,token):
     try:
-        
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                            CREATE TABLE IF NOT EXISTS tbl_request(col_id SERIAL PRIMARY KEY, col_name TEXT,col_type TEXT ,col_email TEXT,col_mobile TEXT,col_description TEXT,col_status TEXT default 'Under Review',col_instruction TEXT DEFAULT '' ,col_created_at TIMESTAMPTZ default NOW(),col_assigned_ca_cs_id INT DEFAULT 0);
+                            CREATE TABLE IF NOT EXISTS tbl_request(col_id SERIAL PRIMARY KEY, col_name TEXT,col_type TEXT ,col_email TEXT,col_mobile TEXT,col_description TEXT,col_status TEXT default 'Under Review',col_instruction TEXT DEFAULT '' ,col_created_at TIMESTAMPTZ default NOW(),col_assigned_ca_cs_id INT DEFAULT 0, col_agent_email_id TEXT);
                             """)
             cursor.execute(f"""
-                           INSERT INTO tbl_request (col_name,col_type,col_email,col_mobile,col_description)  VALUES (%s, %s, %s, %s, %s) RETURNING col_id;
-                            """,(name, type_, email, mobile, description) )
+                           INSERT INTO tbl_request (col_name,col_type,col_email,col_mobile,col_description,col_agent_email_id)  VALUES (%s, %s, %s, %s, %s,%s) RETURNING col_id;
+                            """,(name, type_, email, mobile, description,payload['email']) )
             new_id = cursor.fetchone()[0]
             print(new_id)
 
@@ -201,6 +214,10 @@ def submit_request(name,type_,email,mobile,description,documents,):
             
             print('submitted')
             return 'submitted'
+    except jwt.ExpiredSignatureError:
+        return "Token expired, Please login again!"
+    except jwt.InvalidTokenError:
+        return "Invalid token, Please login again!"
     except Exception as e:
         print(e)
         return 'server error'
@@ -259,7 +276,6 @@ def get_request_document_data(id):
 
 def ca_cs_registartion(data):
     try:
-        
         with connection.cursor() as cursor:
             cursor.execute("""
                             CREATE TABLE IF NOT EXISTS tbl_ca_cs(col_id SERIAL PRIMARY KEY, col_name TEXT,col_role TEXT, col_specialization TEXT ,col_email TEXT,col_mobile TEXT,col_regNumber TEXT,col_workingDays TEXT[], col_created_at TIMESTAMPTZ default NOW(),col_assigned_request INT[] DEFAULT '{}');
@@ -295,7 +311,16 @@ def ca_cs_registartion(data):
         return 'server error'
 
 
-
+def sendStatusUpdateEmail(agentEmail,agentUserName,requestId,requesCustomerName,requestStatus,requestInstruction):
+    subject = "Request Status Update"
+    from_email="sanketsawant4123@gmail.com"
+    to=[agentEmail]
+    text_content='Request Status Update'
+    html_content= f"<p>Dear {agentUserName},<br> We would like to inform you that the status of your request has been updated. Please find the details below : <br><br>Request ID: {requestId}<br>Customer Name: {requesCustomerName}<br>Current Status: <b>{requestStatus}</b><br>Instruction: {requestInstruction if requestInstruction else 'NONE'}<br><br><br> If you have any questions or need further assistance, please feel free to contact us.<br><br>Thank you!</p>"
+    msg= EmailMultiAlternatives(subject,text_content,from_email,to)
+    msg.attach_alternative(html_content,"text/html")
+    msg.send()    
+    print('status update mail sent')
 
 def update_request_status(requestId,requestStatus,requestInstruction):
     try:
@@ -304,10 +329,24 @@ def update_request_status(requestId,requestStatus,requestInstruction):
             cursor.execute(
                 f"""
                     UPDATE tbl_request SET col_status= %s, col_instruction = %s where col_id = %s RETURNING col_status;
-                 """ ,(requestStatus,requestInstruction,requestId)  
+                    SELECT col_agent_email_id,col_id,col_name from tbl_request where col_id = %s;
+                 """ ,(requestStatus,requestInstruction,requestId,requestId)  
             )
-            new_status=cursor.fetchone()[0]
-            print(f'updated status : {new_status}')
+            row=cursor.fetchone()
+            agent_email=row[0]
+            request_id=row[1]
+            reques_customer_name=row[2]
+            print(f'agent email : {agent_email}')
+
+            cursor.execute(
+                f"""
+                    SELECT col_username from tbl_login_data where col_email= %s;
+                 """ ,(agent_email,)  
+            )
+            row=cursor.fetchone()
+            agent_username=row[0]
+            print(agent_email,agent_username ,request_id,reques_customer_name,requestStatus,requestInstruction)
+            sendStatusUpdateEmail(agentEmail=agent_email,agentUserName=agent_username , requestId=request_id,requesCustomerName=reques_customer_name,requestStatus=requestStatus,requestInstruction=requestInstruction)
 
     except Exception as e:
         print(e)
@@ -338,4 +377,15 @@ def assign_ca_cs(ca_cs_id,requestId):
     except Exception as e:
         print(e)
 
-            
+def get_verified_request_data():
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                    select * from tbl_request where col_status = 'Verified' order by col_created_at DESC
+                """)
+            data=cursor.fetchall()
+            print(data)
+            return data
+    except Exception as e:
+        print(e)
+        return []
