@@ -83,7 +83,7 @@ def submit_request_api(request):
 def get_request_document_api(request):
     data=request.data
     try:
-        print('in function get_request_data_api')
+        print(' get_request_document_api')
         response= get_request_document(data['id'])
 
         print(f'data having {len(response)} data')
@@ -160,7 +160,7 @@ def update_request_status_api(request):
 @api_view(['POST'])    
 def get_ca_cs_data_api(request):
     try:
-        print('in function get_request_data_api')
+        print('get_ca_cs_data_api')
         response= get_ca_cs_data()
         response= JsonResponse({'result':response})
         return response
@@ -185,7 +185,7 @@ def assign_ca_cs_api(request):
 @api_view(['POST'])    
 def get_verified_request_data_api(request):
     try:
-        print('in function get_request_data_api')
+        print('get_verified_request_data_api')
         response= get_verified_request_data()
         response= JsonResponse({'result':response})
         return response
