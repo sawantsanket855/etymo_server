@@ -235,13 +235,11 @@ def get_request_document(request_id):
                     select col_id ,col_filename, col_content_type from tbl_documents where col_request_id={request_id}
                 """)
             data=cursor.fetchall()
-            print(data)
+            print(f'documents got {data}')
             return data
     except Exception as e:
-        return []
         print(e)
-
-    
+        return []
 
 def get_request_data():
     try:
