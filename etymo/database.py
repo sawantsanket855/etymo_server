@@ -32,7 +32,7 @@ def login(email,password,loginType):
     
     except Exception as e:
         print(e)
-        return ('server error','')
+        return ('server error',e)
     
 def register(username,email,password):
     try:
