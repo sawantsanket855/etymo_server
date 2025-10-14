@@ -39,4 +39,5 @@ urlpatterns = [
     path('get_verified_request_data/',get_verified_request_data_api), 
     path('submit_payment_request/',submit_payment_request_api),
     path('get_payment_request_data/',get_payment_request_data_api),
+    path('get_payment_request_document/',get_payment_request_document_api)
 ]

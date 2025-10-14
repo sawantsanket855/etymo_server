@@ -390,7 +390,7 @@ def get_verified_request_data():
         return []
     
 
-def submit_request(name,amount,paymentMethod,bankName,accountNumber,ifscCode,upiId,documents,token):
+def submit_payment_request(name,amount,paymentMethod,bankName,accountNumber,ifscCode,upiId,documents,token):
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         with connection.cursor() as cursor:
@@ -442,6 +442,39 @@ def get_payment_request_data():
                 """)
             data=cursor.fetchall()
             print(data)
+            return data
+    except Exception as e:
+        print(e)
+        return []
+    
+# def get_payment_request_document_data(id):
+#     try:
+#         print('get_payment_request_document_data')
+#         with connection.cursor() as cursor:
+#             cursor.execute(f"""
+#                     select col_content_type,col_file_data from tbl_payment_documents where col_id={id}
+#                 """)
+#             data= cursor.fetchone()
+#             print(data)
+#             return data
+#     except Exception as e:
+#         print(e)
+
+
+def get_payment_request_document(request_id):
+    print(request_id)
+    try:
+        with connection.cursor() as cursor:
+            # cursor.execute("""
+            #         select col_id from tbl_request order by col_created_at DESC
+            #     """)
+            # request_id=cursor.fetchone()[0]
+            # print(request_id)
+            cursor.execute(f"""
+                    select col_id ,col_filename, col_content_type from tbl_payment_documents where col_request_id={request_id}
+                """)
+            data=cursor.fetchall()
+            print(f'documents got {data}')
             return data
     except Exception as e:
         print(e)
