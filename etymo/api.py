@@ -76,7 +76,10 @@ def submit_request_api(request):
     mobile=request.POST.get('mobile')
     description=request.POST.get('description')
     token=request.POST.get('token')
+    print('calling')
     response= submit_request(name,type,email,mobile,description,documents,token)
+    print('called')
+    print(response)
     return JsonResponse({'message':response})
 
 @api_view(['POST'])    
@@ -211,7 +214,7 @@ def submit_payment_request_api(request):
     ifscCode=request.POST.get('ifscCode')
     upiId=request.POST.get('upiId')
     token=request.POST.get('token')
-    response= submit_request(name,amount,paymentMethod,bankName,accountNumber,ifscCode,upiId,documents,token)
+    response= submit_payment_request(name,amount,paymentMethod,bankName,accountNumber,ifscCode,upiId,documents,token)
     return JsonResponse({'message':response})
 
 
@@ -226,3 +229,20 @@ def get_payment_request_data_api(request):
     except Exception as e:
         print('api call error')
         print(e)
+
+
+@api_view(['POST'])    
+def get_payment_request_document_api(request):
+    data=request.data
+    print(data)
+    try:
+        print(' get_request_document_api')
+        response= get_request_document(data['id'])
+
+        print(f'data having {len(response)} data')
+        return JsonResponse({'result':response})
+    except Exception as e:
+        print('api call error')
+        print(e)
+
+
