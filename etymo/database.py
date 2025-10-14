@@ -224,6 +224,7 @@ def submit_request(name,type_,email,mobile,description,documents,token):
 
 
 def get_request_document(request_id):
+    print(request_id)
     try:
         with connection.cursor() as cursor:
             # cursor.execute("""
@@ -380,6 +381,64 @@ def get_verified_request_data():
         with connection.cursor() as cursor:
             cursor.execute("""
                     select * from tbl_request where col_status = 'Verified' order by col_created_at DESC
+                """)
+            data=cursor.fetchall()
+            print(data)
+            return data
+    except Exception as e:
+        print(e)
+        return []
+    
+
+def submit_request(name,amount,paymentMethod,bankName,accountNumber,ifscCode,upiId,documents,token):
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                            CREATE TABLE IF NOT EXISTS tbl_payment_request(col_id SERIAL PRIMARY KEY, col_name TEXT,col_amount TEXT,col_payment_method TEXT ,col_bank_name TEXT,col_account_number TEXT,col_ifsc_code TEXT, col_upi_id TEXT,col_status TEXT default 'Pending',col_instruction TEXT DEFAULT '' ,col_created_at TIMESTAMPTZ default NOW(),col_agent_email_id TEXT);
+                            """)
+            cursor.execute(f"""
+                           INSERT INTO tbl_payment_request (col_name,col_amount,col_payment_method,col_bank_name,col_account_number,col_ifsc_code,col_upi_id,col_agent_email_id)  VALUES (%s,%s, %s, %s, %s, %s,%s,%s) RETURNING col_id;
+                            """,(name,amount, paymentMethod, bankName, accountNumber, ifscCode,upiId,payload['email']) )
+            new_id = cursor.fetchone()[0]
+            print(new_id)
+
+            for doc in documents:
+                byte_data=doc.read()
+                print("Name:",doc.name ) 
+                print("Type:", doc.content_type)
+                print("Size:", len(byte_data))
+            
+                cursor.execute(f"""
+                                CREATE TABLE IF NOT EXISTS tbl_payment_documents (
+                                                        col_id SERIAL PRIMARY KEY,
+                                                        col_request_id INT REFERENCES tbl_request(col_id) ON DELETE CASCADE, -- link to request
+                                                        col_filename TEXT,
+                                                        col_content_type TEXT,
+                                                        col_file_data BYTEA,
+                                                        col_created_at TIMESTAMPTZ DEFAULT NOW()
+                                                    );
+                               INSERT INTO tbl_payment_documents (col_request_id,col_filename,col_content_type,col_file_data)  VALUES (%s, %s, %s, %s);
+                                """,(new_id,doc.name,doc.content_type,byte_data))
+            
+            print('submitted')
+            return 'submitted'
+    except jwt.ExpiredSignatureError:
+        return "Token expired, Please login again!"
+    except jwt.InvalidTokenError:
+        return "Invalid token, Please login again!"
+    except Exception as e:
+        print(e)
+        return 'server error'
+    
+
+    
+
+def get_payment_request_data():
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                    select * from tbl_payment_request order by col_created_at DESC
                 """)
             data=cursor.fetchall()
             print(data)

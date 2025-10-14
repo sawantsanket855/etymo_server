@@ -82,6 +82,7 @@ def submit_request_api(request):
 @api_view(['POST'])    
 def get_request_document_api(request):
     data=request.data
+    print(data)
     try:
         print(' get_request_document_api')
         response= get_request_document(data['id'])
@@ -187,6 +188,39 @@ def get_verified_request_data_api(request):
     try:
         print('get_verified_request_data_api')
         response= get_verified_request_data()
+        response= JsonResponse({'result':response})
+        return response
+    except Exception as e:
+        print('api call error')
+        print(e)
+
+        
+
+@api_view(['POST'])    
+def submit_payment_request_api(request):
+    print('in submit_payment_request_api')
+    data=request.data
+    print(data)
+    documents= request.FILES.getlist('documents')
+    print(documents)
+    name=request.POST.get('name')
+    amount=request.POST.get('amount')
+    paymentMethod=request.POST.get('paymentMethod')
+    bankName=request.POST.get('bankName')
+    accountNumber=request.POST.get('accountNumber')
+    ifscCode=request.POST.get('ifscCode')
+    upiId=request.POST.get('upiId')
+    token=request.POST.get('token')
+    response= submit_request(name,amount,paymentMethod,bankName,accountNumber,ifscCode,upiId,documents,token)
+    return JsonResponse({'message':response})
+
+
+
+@api_view(['POST'])    
+def get_payment_request_data_api(request):
+    try:
+        print('in function get_payment_request_data_api')
+        response= get_payment_request_data()
         response= JsonResponse({'result':response})
         return response
     except Exception as e:
