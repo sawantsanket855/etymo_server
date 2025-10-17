@@ -39,7 +39,10 @@ def register(username,email,password):
         with connection.cursor() as cursor:
             cursor.execute(f"""
                            create table IF NOT EXISTS tbl_login_data(col_username TEXT,col_email TEXT UNIQUE,col_password TEXT,col_login_type TEXT DEFAULT 'Agent');
-                           insert into tbl_login_data (col_username,col_email,col_password) values('{username}','{email}','{password}');""")
+                           CREATE TABLE IF NOT EXISTS tbl_agent_data(col_email TEXT REFERENCES tbl_login_data(col_email)ON DELETE CASCADE,col_balance INT DEFAULT 0);
+                           insert into tbl_login_data (col_username,col_email,col_password) values('{username}','{email}','{password}');
+                           insert into tbl_agent_data(col_email) values('{email}')
+                           """)
             rows=cursor.rowcount
             print(rows)
             return 'registered'
@@ -226,6 +229,7 @@ def submit_request(name,type_,email,mobile,description,documents,token):
 def get_request_document(request_id):
     print(request_id)
     try:
+        
         with connection.cursor() as cursor:
             # cursor.execute("""
             #         select col_id from tbl_request order by col_created_at DESC
@@ -242,18 +246,35 @@ def get_request_document(request_id):
         print(e)
         return []
 
-def get_request_data():
+def get_request_data(token):
     try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        print(payload['email'])
+        email=payload['email']
         with connection.cursor() as cursor:
-            cursor.execute("""
-                    select * from tbl_request order by col_created_at DESC
+            cursor.execute(f"""
+                    select col_login_type from tbl_login_data where col_email='{email}';
                 """)
+            data=cursor.fetchone()
+            print(data[0])
+            if(data[0]=='Admin'):
+                cursor.execute("""
+                        select * from tbl_request order by col_created_at DESC
+                    """)
+            else:
+                cursor.execute(f"""
+                        select * from tbl_request where col_agent_email_id='{email}' order by col_created_at DESC
+                    """)
             data=cursor.fetchall()
-            print(data)
-            return data
+                # print(data)
+            return (data,'success')
+    except jwt.ExpiredSignatureError:
+        return ([],"Token expired, Please login again!")
+    except jwt.InvalidTokenError:
+        return ([],"Invalid token, Please login again!")
     except Exception as e:
         print(e)
-        return []
+        return ([],'server error')
 
 
 
@@ -434,15 +455,32 @@ def submit_payment_request(name,amount,paymentMethod,bankName,accountNumber,ifsc
 
     
 
-def get_payment_request_data():
+def get_payment_request_data(token):
     try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        email=payload['email']
         with connection.cursor() as cursor:
-            cursor.execute("""
-                    select * from tbl_payment_request order by col_created_at DESC
+            cursor.execute(f"""
+                    select col_login_type from tbl_login_data where col_email='{email}';
                 """)
+            data=cursor.fetchone()
+            print(data[0])
+            if(data[0]=='Admin'):
+                cursor.execute("""
+                        select * from tbl_payment_request order by col_created_at DESC
+                    """)
+            else:
+                cursor.execute(f"""
+                        select * from tbl_payment_request where col_agent_email_id='{email}' order by col_created_at DESC
+                    """)
+            
             data=cursor.fetchall()
             print(data)
             return data
+    except jwt.ExpiredSignatureError:
+        return "Token expired, Please login again!"
+    except jwt.InvalidTokenError:
+        return "Invalid token, Please login again!"
     except Exception as e:
         print(e)
         return []
@@ -479,3 +517,52 @@ def get_payment_request_document(request_id):
     except Exception as e:
         print(e)
         return []
+
+
+def get_payment_request_document_data(id):
+    try:
+        print('get_payment_request_document_data')
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                    select col_content_type,col_file_data from tbl_payment_documents where col_id={id}
+                """)
+            data= cursor.fetchone()
+            print(data)
+            return data
+    except Exception as e:
+        print(e)
+
+
+def update_payment_request_status(paymentRequestId,requestInstruction):
+    try:
+        print('in update_payment_request_status')
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"""
+                    SELECT col_agent_email_id,col_name,col_amount from tbl_payment_request where col_id = %s;
+                 """ ,(paymentRequestId,)  
+            )
+            row=cursor.fetchone()
+            # agent_email=row[0]
+            agent_email='prashant@gmail.com'
+            request_customer_name=row[1]
+            amount=row[2]
+            print(f'agent email : {agent_email}')
+
+            cursor.execute(
+                f"""
+                    UPDATE tbl_agent_data SET col_balance = CAST(col_balance as INT) + {amount};
+                    UPDATE tbl_payment_request SET col_status= 'Verified', col_instruction = %s where col_id = %s;
+                    SELECT col_username from tbl_login_data where col_email= %s;
+                 """ ,(requestInstruction,paymentRequestId,agent_email)  
+            )
+
+            
+            row=cursor.fetchone()
+            agent_username=row[0]
+            print(agent_email,agent_username ,paymentRequestId,request_customer_name,requestInstruction)
+            # sendStatusUpdateEmail(agentEmail=agent_email,agentUserName=agent_username , requestId=request_id,requesCustomerName=reques_customer_name,requestStatus=requestStatus,requestInstruction=requestInstruction)
+            return 'success'
+    except Exception as e:
+        print(e)
+        return 'server error'

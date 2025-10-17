@@ -98,14 +98,17 @@ def get_request_document_api(request):
     
 @api_view(['POST'])    
 def get_request_data_api(request):
+    data=request.data
     try:
         print('in function get_request_data_api')
-        response= get_request_data()
-        response= JsonResponse({'result':response})
+        response,message= get_request_data(data['token'])
+        response= JsonResponse({'result':response,'message':message})
         return response
     except Exception as e:
         print('api call error')
         print(e)
+        return('server error')
+        
 
 
 
@@ -221,9 +224,10 @@ def submit_payment_request_api(request):
 
 @api_view(['POST'])    
 def get_payment_request_data_api(request):
+    data =request.data
     try:
         print('in function get_payment_request_data_api')
-        response= get_payment_request_data()
+        response= get_payment_request_data(data['token'])
         response= JsonResponse({'result':response})
         return response
     except Exception as e:
@@ -237,7 +241,7 @@ def get_payment_request_document_api(request):
     print(data)
     try:
         print(' get_request_document_api')
-        response= get_request_document(data['id'])
+        response= get_payment_request_document(data['id'])
 
         print(f'data having {len(response)} data')
         return JsonResponse({'result':response})
@@ -246,3 +250,33 @@ def get_payment_request_document_api(request):
         print(e)
 
 
+@api_view(['POST'])    
+def get_payment_request_document_data_api(request):
+    data=request.data
+    print(data)
+    print(f'got id =',data['id'])
+    try:
+        print('in function get_payment_request_document_data_api')
+        response= get_payment_request_document_data(data['id'])
+        print(response)
+        file_data=response[1]
+        if isinstance(file_data, memoryview):
+            file_data = bytes(file_data)
+            print('converted to bytes')
+        response= HttpResponse(file_data,content_type=response[0])
+        return response
+    except Exception as e:
+        print('api call error')
+        print(e)
+
+
+@api_view(['POST'])
+def update_payment_request_status_api(request):
+    try:
+        data=request.data
+        print(data)
+        response= update_payment_request_status(data['paymentRequestID'],data['requestInstruction'])
+        return JsonResponse({'message':response})
+    except Exception as e:
+        print('error',e)
+        return JsonResponse({'message':'server error'})
