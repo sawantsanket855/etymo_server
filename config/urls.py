@@ -42,4 +42,7 @@ urlpatterns = [
     path('get_payment_request_document/',get_payment_request_document_api),
     path('get_payment_request_document_data/',get_payment_request_document_data_api),
     path('verifyPaymentRequest/',update_payment_request_status_api),
+    path('get_ca_cs_document/',get_ca_cs_document_api),
+    path('get_ca_cs_document_data/',get_ca_cs_document_data_api),
+
 ]

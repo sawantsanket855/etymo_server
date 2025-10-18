@@ -231,11 +231,6 @@ def get_request_document(request_id):
     try:
         
         with connection.cursor() as cursor:
-            # cursor.execute("""
-            #         select col_id from tbl_request order by col_created_at DESC
-            #     """)
-            # request_id=cursor.fetchone()[0]
-            # print(request_id)
             cursor.execute(f"""
                     select col_id ,col_filename, col_content_type from tbl_documents where col_request_id={request_id}
                 """)
@@ -278,6 +273,37 @@ def get_request_data(token):
 
 
 
+def get_ca_cs_data(token):
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        print(payload['email'])
+        email=payload['email']
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                    select col_login_type from tbl_login_data where col_email='{email}';
+                """)
+            data=cursor.fetchone()
+            print(data[0])
+            if(data[0]=='Admin'):
+                cursor.execute("""
+                        select * from tbl_ca_cs order by col_created_at DESC
+                    """)
+                data=cursor.fetchall()
+                return (data,'success')
+            else:
+                return ([],"Unauthorized request")
+                
+            
+                # print(data)
+    except jwt.ExpiredSignatureError:
+        return ([],"Token expired, Please login again!")
+    except jwt.InvalidTokenError:
+        return ([],"Invalid token, Please login again!")
+    except Exception as e:
+        print(e)
+        return ([],'server error')
+
+
 
 def get_request_document_data(id):
     try:
@@ -294,7 +320,7 @@ def get_request_document_data(id):
 
 
 
-def ca_cs_registartion(data):
+def ca_cs_registartion(data,docs):
     try:
         with connection.cursor() as cursor:
             cursor.execute("""
@@ -306,23 +332,23 @@ def ca_cs_registartion(data):
             new_id = cursor.fetchone()[0]
             print(new_id)
 
-            # for doc in documents:
-            #     byte_data=doc.read()
-            #     print("Name:",doc.name ) 
-            #     print("Type:", doc.content_type)
-            #     print("Size:", len(byte_data))
+            for doc in docs:
+                byte_data=doc.read()
+                print("Name:",doc.name ) 
+                print("Type:", doc.content_type)
+                print("Size:", len(byte_data))
             
-            #     cursor.execute(f"""
-            #                     CREATE TABLE IF NOT EXISTS tbl_documents (
-            #                                             col_id SERIAL PRIMARY KEY,
-            #                                             col_request_id INT REFERENCES tbl_request(col_id) ON DELETE CASCADE, -- link to request
-            #                                             col_filename TEXT,
-            #                                             col_content_type TEXT,
-            #                                             col_file_data BYTEA,
-            #                                             col_created_at TIMESTAMPTZ DEFAULT NOW()
-            #                                         );
-            #                    INSERT INTO tbl_documents (col_request_id,col_filename,col_content_type,col_file_data)  VALUES (%s, %s, %s, %s);
-            #                     """,(new_id,doc.name,doc.content_type,byte_data))
+                cursor.execute(f"""
+                                CREATE TABLE IF NOT EXISTS tbl_ca_cs_documents (
+                                                        col_id SERIAL PRIMARY KEY,
+                                                        col_ca_cs_id INT REFERENCES tbl_request(col_id) ON DELETE CASCADE, -- link to request
+                                                        col_filename TEXT,
+                                                        col_content_type TEXT,
+                                                        col_file_data BYTEA,
+                                                        col_created_at TIMESTAMPTZ DEFAULT NOW()
+                                                    );
+                               INSERT INTO tbl_ca_cs_documents (col_ca_cs_id,col_filename,col_content_type,col_file_data)  VALUES (%s, %s, %s, %s);
+                                """,(new_id,doc.name,doc.content_type,byte_data))
             
             print('submitted')
             return 'submitted'
@@ -373,18 +399,18 @@ def update_request_status(requestId,requestStatus,requestInstruction):
         return 'server error'
 
 
-def get_ca_cs_data():
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                    select * from tbl_ca_cs;
-                """)
-            data=cursor.fetchall()
-            print(data)
-            return data
-    except Exception as e:
-        print(e)
-        return []
+# def get_ca_cs_data():
+#     try:
+#         with connection.cursor() as cursor:
+#             cursor.execute("""
+#                     select * from tbl_ca_cs;
+#                 """)
+#             data=cursor.fetchall()
+#             print(data)
+#             return data
+#     except Exception as e:
+#         print(e)
+#         return []
     
 def assign_ca_cs(ca_cs_id,requestId):
     try:
@@ -566,3 +592,33 @@ def update_payment_request_status(paymentRequestId,requestInstruction):
     except Exception as e:
         print(e)
         return 'server error'
+
+
+def get_ca_cs_document(ca_cs_id):
+    print(ca_cs_id)
+    try:
+        
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                    select col_id ,col_filename, col_content_type from tbl_ca_cs_documents where col_ca_cs_id={ca_cs_id}
+                """)
+            data=cursor.fetchall()
+            print(f'documents got {data}')
+            return data
+    except Exception as e:
+        print(e)
+        return []
+    
+def get_ca_cs_document_data(id):
+    print(id)
+    try:
+        print('get_ca_cs_document_data')
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                    select col_content_type,col_file_data from tbl_ca_cs_documents where col_id={id}
+                """)
+            data= cursor.fetchone()
+            print(data)
+            return data
+    except Exception as e:
+        print(e)
