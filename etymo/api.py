@@ -110,6 +110,19 @@ def get_request_data_api(request):
         return('server error')
         
 
+# @api_view(['POST'])    
+# def get_ca_cs_data_api(request):
+#     data=request.data
+#     try:
+#         print('in function get_ca_cs_data_api')
+#         response,message= get_ca_cs_data(data['token'])
+#         print(f'message{message}')
+#         response= JsonResponse({'result':response,'message':message})
+#         return response
+#     except Exception as e:
+#         print('api call error')
+#         print(e)
+#         return('server error')
 
 
 
@@ -140,16 +153,9 @@ def ca_cs_registartion_api(request):
     print(data)
     certificate= request.FILES.getlist('certificate')
     IdProof= request.FILES.getlist('IdProof')
-    name=request.POST.get('name')
-    role=request.POST.get('role')
-    regNumber=request.POST.get('regNumber')
-    email=request.POST.get('email')
-    mobile=request.POST.get('mobile')
-    workingDays=request.POST.getlist('workingDays')
     print(certificate)
     print(IdProof)
-    print(name,role,email,mobile,regNumber,workingDays)
-    response= ca_cs_registartion(data)
+    response= ca_cs_registartion(data,[certificate[0],IdProof[0]])
     return JsonResponse({'message':response})
 
 @api_view(['POST'])
@@ -166,10 +172,11 @@ def update_request_status_api(request):
 
 @api_view(['POST'])    
 def get_ca_cs_data_api(request):
+    data=request.data
     try:
         print('get_ca_cs_data_api')
-        response= get_ca_cs_data()
-        response= JsonResponse({'result':response})
+        response,message= get_ca_cs_data(data['token'])
+        response= JsonResponse({'result':response,'message':message})
         return response
     except Exception as e:
         print('api call error')
@@ -280,3 +287,38 @@ def update_payment_request_status_api(request):
     except Exception as e:
         print('error',e)
         return JsonResponse({'message':'server error'})
+
+
+@api_view(['POST'])    
+def get_ca_cs_document_api(request):
+    data=request.data
+    print(data)
+    try:
+        print(' get_ca_cs_document_api')
+        response= get_ca_cs_document(data['id'])
+
+        print(f'data having {len(response)} data')
+        return JsonResponse({'result':response})
+    except Exception as e:
+        print('api call error')
+        print(e)
+
+@api_view(['POST'])    
+def get_ca_cs_document_data_api(request):
+    data=request.data
+    print(data)
+    print(f'got id =',data['id'])
+    try:
+        print('in function get_ca_cs_document_data_api')
+        response= get_ca_cs_document_data(data['id'])
+        print(response)
+        file_data=response[1]
+        if isinstance(file_data, memoryview):
+            file_data = bytes(file_data)
+            print('converted to bytes')
+        response= HttpResponse(file_data,content_type=response[0])
+        return response
+    except Exception as e:
+        print('api call error')
+        print(e)
+
