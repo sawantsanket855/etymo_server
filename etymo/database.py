@@ -189,6 +189,7 @@ def submit_request(name,type_,email,mobile,description,documents,token):
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         with connection.cursor() as cursor:
             cursor.execute(f"""
+                           CREATE TABLE IF NOT EXISTS tbl_transactions(col_id SERIAL PRIMARY KEY,col_amount INT, col_type TEXT, col_user_email TEXT,col_purpose TEXT,col_reference_id INT, col_created_at TIMESTAMPTZ default NOW());
                             CREATE TABLE IF NOT EXISTS tbl_request(col_id SERIAL PRIMARY KEY, col_name TEXT,col_type TEXT ,col_email TEXT,col_mobile TEXT,col_description TEXT,col_status TEXT default 'Under Review',col_instruction TEXT DEFAULT '' ,col_created_at TIMESTAMPTZ default NOW(),col_assigned_ca_cs_id INT DEFAULT 0, col_agent_email_id TEXT);
                             """)
             cursor.execute(f"""
@@ -196,6 +197,10 @@ def submit_request(name,type_,email,mobile,description,documents,token):
                             """,(name, type_, email, mobile, description,payload['email']) )
             new_id = cursor.fetchone()[0]
             print(new_id)
+            cursor.execute(f"""
+                           INSERT INTO tbl_transactions(col_type,col_amount, col_user_email,col_purpose,col_reference_id) VALUES('debit',500,'{payload['email']}','request_generation',{new_id});
+                           UPDATE tbl_agent_data SET col_balance = CAST(col_balance as INT) - 500 where col_email ='{payload['email']}';
+                            """)
 
             for doc in documents:
                 byte_data=doc.read()
@@ -274,6 +279,7 @@ def get_request_data(token):
 
 
 def get_ca_cs_data(token):
+    print("in get_ca_cs_data")
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         print(payload['email'])
@@ -569,15 +575,22 @@ def update_payment_request_status(paymentRequestId,requestInstruction):
                  """ ,(paymentRequestId,)  
             )
             row=cursor.fetchone()
-            # agent_email=row[0]
-            agent_email='prashant@gmail.com'
+            agent_email=row[0]
+            # agent_email='prashant@gmail.com'
             request_customer_name=row[1]
             amount=row[2]
             print(f'agent email : {agent_email}')
 
             cursor.execute(
                 f"""
-                    UPDATE tbl_agent_data SET col_balance = CAST(col_balance as INT) + {amount};
+                    CREATE TABLE IF NOT EXISTS tbl_transactions(col_id SERIAL PRIMARY KEY,col_amount INT, col_type TEXT, col_user_email TEXT,col_purpose TEXT,col_reference_id INT, col_created_at TIMESTAMPTZ default NOW());
+                    INSERT INTO tbl_transactions(col_type,col_amount, col_user_email,col_purpose,col_reference_id) VALUES('credit',{amount},'{agent_email}','payment_verification',{paymentRequestId});
+                """
+            )
+
+            cursor.execute(
+                f"""
+                    UPDATE tbl_agent_data SET col_balance = CAST(col_balance as INT) + {amount} where col_email ='{agent_email}';
                     UPDATE tbl_payment_request SET col_status= 'Verified', col_instruction = %s where col_id = %s;
                     SELECT col_username from tbl_login_data where col_email= %s;
                  """ ,(requestInstruction,paymentRequestId,agent_email)  
@@ -622,3 +635,54 @@ def get_ca_cs_document_data(id):
             return data
     except Exception as e:
         print(e)
+
+
+
+def get_agent_balance(token):
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                        select col_balance from tbl_agent_data where col_email = '{payload['email']}'
+                        """)
+            balance=cursor.fetchone()
+            return 'success', balance[0]
+    except jwt.ExpiredSignatureError:
+        return "Token expired, Please login again!",0
+    except jwt.InvalidTokenError:
+        return "Invalid token, Please login again!",0
+    except Exception as e:
+        print(e)
+        return 'server error',0
+    
+
+
+def get_transaction_data(token):
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        email=payload['email']
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                    select col_login_type from tbl_login_data where col_email='{email}';
+                """)
+            data=cursor.fetchone()
+            print(data[0])
+            if(data[0]=='Admin'):
+                cursor.execute("""
+                        select * from tbl_transactions order by col_created_at DESC
+                    """)
+            else:
+                cursor.execute(f"""
+                        select * from tbl_transactions where col_user_email='{email}' order by col_created_at DESC
+                    """)
+            
+            data=cursor.fetchall()
+            print(data)
+            return data
+    except jwt.ExpiredSignatureError:
+        return "Token expired, Please login again!"
+    except jwt.InvalidTokenError:
+        return "Invalid token, Please login again!"
+    except Exception as e:
+        print(e)
+        return []

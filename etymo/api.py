@@ -174,8 +174,10 @@ def update_request_status_api(request):
 def get_ca_cs_data_api(request):
     data=request.data
     try:
+        print(data)
         print('get_ca_cs_data_api')
         response,message= get_ca_cs_data(data['token'])
+        print(response,message)
         response= JsonResponse({'result':response,'message':message})
         return response
     except Exception as e:
@@ -322,3 +324,28 @@ def get_ca_cs_document_data_api(request):
         print('api call error')
         print(e)
 
+@api_view(['POST'])    
+def get_agent_balance_api(request):
+    data=request.data
+    try:
+        print('in function get_agent_balance_api')
+        response,balance= get_agent_balance(data['token'])
+        response= JsonResponse({'result':response,'balance':balance})
+        return response
+    except Exception as e:
+        print('api call error')
+        print(e)
+        return  JsonResponse({'result':'server error','balance':0})
+    
+
+@api_view(['POST'])    
+def get_transaction_data_api(request):
+    data =request.data
+    try:
+        print('in function get_transaction_data_api')
+        response= get_transaction_data(data['token'])
+        response= JsonResponse({'result':response})
+        return response
+    except Exception as e:
+        print('api call error')
+        print(e)
