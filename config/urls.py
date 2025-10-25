@@ -44,5 +44,7 @@ urlpatterns = [
     path('verifyPaymentRequest/',update_payment_request_status_api),
     path('get_ca_cs_document/',get_ca_cs_document_api),
     path('get_ca_cs_document_data/',get_ca_cs_document_data_api),
+    path('get_agent_balance/',get_agent_balance_api),
+    path('get_transaction_data/',get_transaction_data_api),
 
 ]
