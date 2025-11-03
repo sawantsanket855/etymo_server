@@ -190,7 +190,7 @@ def submit_request(name,type_,email,mobile,description,documents,token):
         with connection.cursor() as cursor:
             cursor.execute(f"""
                            CREATE TABLE IF NOT EXISTS tbl_transactions(col_id SERIAL PRIMARY KEY,col_amount INT, col_type TEXT, col_user_email TEXT,col_purpose TEXT,col_reference_id INT, col_created_at TIMESTAMPTZ default NOW());
-                            CREATE TABLE IF NOT EXISTS tbl_request(col_id SERIAL PRIMARY KEY, col_name TEXT,col_type TEXT ,col_email TEXT,col_mobile TEXT,col_description TEXT,col_status TEXT default 'Under Review',col_instruction TEXT DEFAULT '' ,col_created_at TIMESTAMPTZ default NOW(),col_assigned_ca_cs_id INT DEFAULT 0, col_agent_email_id TEXT);
+                            CREATE TABLE IF NOT EXISTS tbl_request(col_id SERIAL PRIMARY KEY, col_name TEXT,col_type TEXT ,col_email TEXT,col_mobile TEXT,col_description TEXT,col_status TEXT default 'Under Review',col_instruction TEXT DEFAULT '' ,col_created_at TIMESTAMPTZ default NOW(),col_assigned_ca_cs_id INT DEFAULT 0, col_agent_email_id TEXT,col_com_des text default 'none');
                             """)
             cursor.execute(f"""
                            INSERT INTO tbl_request (col_name,col_type,col_email,col_mobile,col_description,col_agent_email_id)  VALUES (%s, %s, %s, %s, %s,%s) RETURNING col_id;
@@ -686,3 +686,74 @@ def get_transaction_data(token):
     except Exception as e:
         print(e)
         return []
+    
+
+
+def complete_request(request_id,description,documents,token):
+    print('id for update')
+    print(request_id)
+    print(token)
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        with connection.cursor() as cursor:
+            cursor.execute(
+                    """UPDATE tbl_request SET col_status = %s ,col_com_des =%s WHERE col_id = %s""",
+                    ('Completed',description, request_id)
+                    )
+
+
+            for doc in documents:
+                byte_data=doc.read()
+                print("Name:",doc.name ) 
+                print("Type:", doc.content_type)
+                print("Size:", len(byte_data))
+            
+                cursor.execute(f"""
+                                CREATE TABLE IF NOT EXISTS tbl_completion_documents(
+                                                        col_id SERIAL PRIMARY KEY,
+                                                        col_request_id INT REFERENCES tbl_request(col_id) ON DELETE CASCADE, -- link to request
+                                                        col_filename TEXT,
+                                                        col_content_type TEXT,
+                                                        col_file_data BYTEA,
+                                                        col_created_at TIMESTAMPTZ DEFAULT NOW()
+                                                    );
+                               INSERT INTO tbl_completion_documents (col_request_id,col_filename,col_content_type,col_file_data)  VALUES (%s, %s, %s, %s);
+                                """,(request_id,doc.name,doc.content_type,byte_data))
+            
+            print('submitted completion request')
+            return 'submitted'
+    except jwt.ExpiredSignatureError:
+        return "Token expired, Please login again!"
+    except jwt.InvalidTokenError:
+        return "Invalid token, Please login again!"
+    except Exception as e:
+        print(e)
+        return 'server error'
+    
+def get_request_completion_document(request_id):
+    print(request_id)
+    try:
+        
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                    select col_id ,col_filename, col_content_type from tbl_completion_documents where col_request_id={request_id}
+                """)
+            data=cursor.fetchall()
+            print(f'documents got {data}')
+            return data
+    except Exception as e:
+        print(e)
+        return []
+
+def get_request_completion_document_data(id):
+    try:
+        print('get_request_document_data')
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                    select col_content_type,col_file_data from tbl_completion_documents where col_id={id}
+                """)
+            data= cursor.fetchone()
+            print(data)
+            return data
+    except Exception as e:
+        print(e)

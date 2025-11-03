@@ -349,3 +349,55 @@ def get_transaction_data_api(request):
     except Exception as e:
         print('api call error')
         print(e)
+
+
+
+@api_view(['POST'])    
+def complete_request_api(request):
+    print('in complete_request_api')
+    data=request.data
+    print(data)
+    documents= request.FILES.getlist('documents')
+    print(documents)
+    description=request.POST.get('description')
+    token=request.POST.get('token')
+    request_id=request.POST.get('request_id')
+    print('complete_request_api call')
+    response= complete_request(request_id,description,documents,token)
+    print('called complete_request')
+    print(response)
+    return JsonResponse({'message':response})
+
+@api_view(['POST'])    
+def get_request_completion_document_api(request):
+    data=request.data
+    print(data)
+    try:
+        print(' get_request_completion_document_api')
+        response= get_request_completion_document(data['id'])
+
+        print(f'data having {len(response)} data')
+        return JsonResponse({'result':response})
+    except Exception as e:
+        print('api call error')
+        print(e)
+
+
+@api_view(['POST'])    
+def get_request_completion_document_data_api(request):
+    data=request.data
+    print(data)
+    print(f'got id =',data['id'])
+    try:
+        print('in function get_request_document_data_api')
+        response= get_request_completion_document_data(data['id'])
+        print(response)
+        file_data=response[1]
+        if isinstance(file_data, memoryview):
+            file_data = bytes(file_data)
+            print('converted to bytes')
+        response= HttpResponse(file_data,content_type=response[0])
+        return response
+    except Exception as e:
+        print('api call error')
+        print(e)

@@ -45,6 +45,9 @@ urlpatterns = [
     path('get_ca_cs_document/',get_ca_cs_document_api),
     path('get_ca_cs_document_data/',get_ca_cs_document_data_api),
     path('get_agent_balance/',get_agent_balance_api),
-    path('get_transaction_data/',get_transaction_data_api),
+    path('get_transaction_data/',get_transaction_data_api),  
+    path('complete_request/',complete_request_api),
+    path('get_request_completion_document/',get_request_completion_document_api),
+    path('get_request_completion_document_data/',get_request_completion_document_data_api),
 
 ]
