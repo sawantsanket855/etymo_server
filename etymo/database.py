@@ -190,7 +190,7 @@ def submit_request(name,type_,email,mobile,description,documents,token):
         with connection.cursor() as cursor:
             cursor.execute(f"""
                            CREATE TABLE IF NOT EXISTS tbl_transactions(col_id SERIAL PRIMARY KEY,col_amount INT, col_type TEXT, col_user_email TEXT,col_purpose TEXT,col_reference_id INT, col_created_at TIMESTAMPTZ default NOW());
-                            CREATE TABLE IF NOT EXISTS tbl_request(col_id SERIAL PRIMARY KEY, col_name TEXT,col_type TEXT ,col_email TEXT,col_mobile TEXT,col_description TEXT,col_status TEXT default 'Under Review',col_instruction TEXT DEFAULT '' ,col_created_at TIMESTAMPTZ default NOW(),col_assigned_ca_cs_id INT DEFAULT 0, col_agent_email_id TEXT,col_com_des text default 'none');
+                            CREATE TABLE IF NOT EXISTS tbl_request(col_id SERIAL PRIMARY KEY, col_name TEXT,col_type TEXT ,col_email TEXT,col_mobile TEXT,col_description TEXT,col_status TEXT default 'Under Review',col_instruction TEXT DEFAULT '' ,col_created_at TIMESTAMPTZ default NOW(),col_assigned_ca_cs_id INT DEFAULT 0, col_agent_email_id TEXT,col_com_des text default 'none',col_approved_at TIMESTAMPTZ,col_completed_at TIMESTAMPTZ,col_rejected_at TIMESTAMPTZ,col_assigned_at TIMESTAMPTZ);
                             """)
             cursor.execute(f"""
                            INSERT INTO tbl_request (col_name,col_type,col_email,col_mobile,col_description,col_agent_email_id)  VALUES (%s, %s, %s, %s, %s,%s) RETURNING col_id;
@@ -253,20 +253,22 @@ def get_request_data(token):
         email=payload['email']
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                    select col_login_type from tbl_login_data where col_email='{email}';
+                    select col_login_type,col_username from tbl_login_data where col_email='{email}';
                 """)
             data=cursor.fetchone()
             print(data[0])
+            username=data[1]
             if(data[0]=='Admin'):
                 cursor.execute("""
                         select * from tbl_request order by col_created_at DESC
                     """)
             else:
                 cursor.execute(f"""
-                        select * from tbl_request where col_agent_email_id='{email}' order by col_created_at DESC
+                        select request.*,login.col_username FROM tbl_request request JOIN tbl_login_data login ON request.col_agent_email_id= login.col_email WHERE request.col_agent_email_id='{email}'  order by request.col_created_at DESC;
+                        
                     """)
+                # select * from tbl_request where col_agent_email_id='{email}' order by col_created_at DESC
             data=cursor.fetchall()
-                # print(data)
             return (data,'success')
     except jwt.ExpiredSignatureError:
         return ([],"Token expired, Please login again!")
@@ -378,9 +380,27 @@ def update_request_status(requestId,requestStatus,requestInstruction):
     try:
         print('in update_request_status')
         with connection.cursor() as cursor:
+            status_time_col=''
+            status_des_col='col_instruction'
+            match(requestStatus):
+                case "Approved":
+                    status_time_col="col_approved_at"
+                case "Rejected":
+                    status_time_col="col_rejected_at"
+                case "Completed":
+                    status_time_col="col_completed_at"
+                    status_des_col='col_com_des'
+                case _:
+                    return "invalid status"
+                
+            print(f"""
+                    UPDATE tbl_request SET col_status= %s, {status_des_col} = %s, {status_time_col}= NOW() where col_id = %s RETURNING col_status;
+                    SELECT col_agent_email_id,col_id,col_name from tbl_request where col_id = %s;
+                 """ ,(requestStatus,requestInstruction,requestId,requestId) )
+            
             cursor.execute(
                 f"""
-                    UPDATE tbl_request SET col_status= %s, col_instruction = %s where col_id = %s RETURNING col_status;
+                    UPDATE tbl_request SET col_status= %s, {status_des_col} = %s, {status_time_col}= NOW() where col_id = %s RETURNING col_status;
                     SELECT col_agent_email_id,col_id,col_name from tbl_request where col_id = %s;
                  """ ,(requestStatus,requestInstruction,requestId,requestId)  
             )
@@ -399,6 +419,7 @@ def update_request_status(requestId,requestStatus,requestInstruction):
             agent_username=row[0]
             print(agent_email,agent_username ,request_id,reques_customer_name,requestStatus,requestInstruction)
             sendStatusUpdateEmail(agentEmail=agent_email,agentUserName=agent_username , requestId=request_id,requesCustomerName=reques_customer_name,requestStatus=requestStatus,requestInstruction=requestInstruction)
+            return "success"
 
     except Exception as e:
         print(e)
@@ -417,17 +438,35 @@ def update_request_status(requestId,requestStatus,requestInstruction):
 #     except Exception as e:
 #         print(e)
 #         return []
+
+
     
 def assign_ca_cs(ca_cs_id,requestId):
     try:
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                    UPDATE tbl_request SET col_assigned_ca_cs_id={ca_cs_id},col_status='Assigned' where col_id ={requestId};
-                    UPDATE tbl_ca_cs SET col_assigned_request= array_append(col_assigned_request, {requestId}) where col_id={ca_cs_id}
+                    UPDATE tbl_request SET col_assigned_ca_cs_id={ca_cs_id},col_status='Assigned',col_assigned_at=NOW() where col_id ={requestId};
+                    UPDATE tbl_ca_cs SET col_assigned_request= array_append(col_assigned_request, {requestId}) where col_id={ca_cs_id};
+                    SELECT col_agent_email_id,col_id,col_name from tbl_request where col_id = {requestId};
                       """)
+            row=cursor.fetchone()
+            agent_email=row[0]
+            request_id=row[1]
+            reques_customer_name=row[2]
+            cursor.execute(
+                f"""
+                    SELECT col_username from tbl_login_data where col_email= %s;
+                 """ ,(agent_email,)  
+            )
+            row=cursor.fetchone()
+            agent_username=row[0]
+            sendStatusUpdateEmail(agentEmail=agent_email,agentUserName=agent_username , requestId=request_id,requesCustomerName=reques_customer_name,requestStatus="Assigned",requestInstruction="")
+            return 'success'
             
     except Exception as e:
+        print('error in assign_ca_cs')
         print(e)
+        return 'error'
 
 def get_verified_request_data():
     try:
@@ -465,7 +504,7 @@ def submit_payment_request(name,amount,paymentMethod,bankName,accountNumber,ifsc
                 cursor.execute(f"""
                                 CREATE TABLE IF NOT EXISTS tbl_payment_documents (
                                                         col_id SERIAL PRIMARY KEY,
-                                                        col_request_id INT REFERENCES tbl_request(col_id) ON DELETE CASCADE, -- link to request
+                                                        col_request_id INT REFERENCES tbl_payment_request(col_id) ON DELETE CASCADE, -- link to request
                                                         col_filename TEXT,
                                                         col_content_type TEXT,
                                                         col_file_data BYTEA,
@@ -508,14 +547,14 @@ def get_payment_request_data(token):
             
             data=cursor.fetchall()
             print(data)
-            return data
+            return (data,'success')
     except jwt.ExpiredSignatureError:
-        return "Token expired, Please login again!"
+        return ([],"Token expired, Please login again!")
     except jwt.InvalidTokenError:
-        return "Invalid token, Please login again!"
+        return ([],"Invalid token, Please login again!")
     except Exception as e:
         print(e)
-        return []
+        return ([],"server error")
     
 # def get_payment_request_document_data(id):
 #     try:
@@ -678,15 +717,15 @@ def get_transaction_data(token):
             
             data=cursor.fetchall()
             print(data)
-            return data
+            return (data,"success")
     except jwt.ExpiredSignatureError:
-        return "Token expired, Please login again!"
+        return ([],"Token expired, Please login again!")
     except jwt.InvalidTokenError:
-        return "Invalid token, Please login again!"
+        return ([],"Invalid token, Please login again!")
     except Exception as e:
         print(e)
-        return []
-    
+        return ([],"server error")
+
 
 
 def complete_request(request_id,description,documents,token):
@@ -695,12 +734,10 @@ def complete_request(request_id,description,documents,token):
     print(token)
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        result=update_request_status(request_id,'Completed',description)
+        if result!="success":
+            return
         with connection.cursor() as cursor:
-            cursor.execute(
-                    """UPDATE tbl_request SET col_status = %s ,col_com_des =%s WHERE col_id = %s""",
-                    ('Completed',description, request_id)
-                    )
-
 
             for doc in documents:
                 byte_data=doc.read()
@@ -719,7 +756,22 @@ def complete_request(request_id,description,documents,token):
                                                     );
                                INSERT INTO tbl_completion_documents (col_request_id,col_filename,col_content_type,col_file_data)  VALUES (%s, %s, %s, %s);
                                 """,(request_id,doc.name,doc.content_type,byte_data))
-            
+            cursor.execute(
+                    f""" SELECT col_agent_email_id,col_id,col_name from tbl_request where col_id = {request_id};"""
+                    )
+            row=cursor.fetchone()
+            agent_email=row[0]
+            request_id=row[1]
+            reques_customer_name=row[2]
+            cursor.execute(
+                f"""
+                    SELECT col_username from tbl_login_data where col_email= %s;
+                 """ ,(agent_email,)  
+            )
+            row=cursor.fetchone()
+            agent_username=row[0]
+            sendStatusUpdateEmail(agentEmail=agent_email,agentUserName=agent_username , requestId=request_id,requesCustomerName=reques_customer_name,requestStatus="Completed",requestInstruction=description)
+    
             print('submitted completion request')
             return 'submitted'
     except jwt.ExpiredSignatureError:

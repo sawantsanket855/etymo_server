@@ -164,7 +164,7 @@ def update_request_status_api(request):
         data=request.data
         print(data)
         response= update_request_status(data['requestID'],data['requestStatus'],data['requestInstruction'])
-        return JsonResponse({'message':'okkkk'})
+        return JsonResponse({'message':response})
     except Exception as e:
         print('error',e)
         return JsonResponse({'message':'server error'})
@@ -192,7 +192,7 @@ def assign_ca_cs_api(request):
         data=request.data
         print(data)
         response= assign_ca_cs(ca_cs_id=data['ca_cs_id'],requestId=data['request_id'])
-        return JsonResponse({'result':'success'})
+        return JsonResponse({'result':response})
     except Exception as e:
         print('error',e)
         return JsonResponse({'result':'server error'})
@@ -237,7 +237,7 @@ def get_payment_request_data_api(request):
     try:
         print('in function get_payment_request_data_api')
         response= get_payment_request_data(data['token'])
-        response= JsonResponse({'result':response})
+        response= JsonResponse({'result':response[0],'message':response[1]})
         return response
     except Exception as e:
         print('api call error')
@@ -251,7 +251,6 @@ def get_payment_request_document_api(request):
     try:
         print(' get_request_document_api')
         response= get_payment_request_document(data['id'])
-
         print(f'data having {len(response)} data')
         return JsonResponse({'result':response})
     except Exception as e:
@@ -344,7 +343,7 @@ def get_transaction_data_api(request):
     try:
         print('in function get_transaction_data_api')
         response= get_transaction_data(data['token'])
-        response= JsonResponse({'result':response})
+        response= JsonResponse({'result':response[0],'message':response[1]})
         return response
     except Exception as e:
         print('api call error')
