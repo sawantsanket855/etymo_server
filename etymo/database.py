@@ -276,7 +276,7 @@ def get_request_data(token):
         return ([],"Invalid token, Please login again!")
     except Exception as e:
         print(e)
-        return ([],'server error')
+        return ([],'data not found')
 
 
 
@@ -309,7 +309,7 @@ def get_ca_cs_data(token):
         return ([],"Invalid token, Please login again!")
     except Exception as e:
         print(e)
-        return ([],'server error')
+        return ([],'data not found')
 
 
 
@@ -349,7 +349,7 @@ def ca_cs_registartion(data,docs):
                 cursor.execute(f"""
                                 CREATE TABLE IF NOT EXISTS tbl_ca_cs_documents (
                                                         col_id SERIAL PRIMARY KEY,
-                                                        col_ca_cs_id INT REFERENCES tbl_request(col_id) ON DELETE CASCADE, -- link to request
+                                                        col_ca_cs_id INT REFERENCES tbl_ca_cs(col_id) ON DELETE CASCADE, -- link to request
                                                         col_filename TEXT,
                                                         col_content_type TEXT,
                                                         col_file_data BYTEA,
@@ -554,7 +554,7 @@ def get_payment_request_data(token):
         return ([],"Invalid token, Please login again!")
     except Exception as e:
         print(e)
-        return ([],"server error")
+        return ([],"data not found")
     
 # def get_payment_request_document_data(id):
 #     try:
@@ -724,7 +724,7 @@ def get_transaction_data(token):
         return ([],"Invalid token, Please login again!")
     except Exception as e:
         print(e)
-        return ([],"server error")
+        return ([],"data not found")
 
 
 
