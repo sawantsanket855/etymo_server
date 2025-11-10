@@ -95,8 +95,17 @@ def sendOTP(email):
 def verifyOTP(email,otp):
     if not otp.isnumeric():
         return 'incorrect otp'
+    login_type=''
+            
     try:
         with connection.cursor() as cursor:
+            cursor.execute(f"""
+                           create table IF NOT EXISTS tbl_login_data(col_username TEXT,col_email TEXT UNIQUE,col_password TEXT,col_login_type TEXT DEFAULT 'Agent');
+                           select col_login_type from tbl_login_data where col_email = '{email}';""")
+            rows=cursor.fetchone()
+            login_type=rows[0]
+            if not rows:
+                return ('email not registered',)
             # cursor.execute(f"select * from tbl_otp where col_email_id='{email}' AND col_gen_time > NOW() - INTERVAL '5 minutes' ORDER BY col_gen_time DESC LIMIT 5")
             cursor.execute(f"select * from tbl_otp where col_email_id='{email}' ORDER BY col_gen_time DESC LIMIT 1")
             rows=cursor.fetchall()
@@ -110,19 +119,27 @@ def verifyOTP(email,otp):
                         try:
                             cursor.execute(f"update tbl_otp SET col_isused = True WHERE col_email_id ='{email}' AND col_otp='{data[1]}';")
                             print('otp status updated')
+                            payload = {
+                                    "email": email,
+                                    "exp": datetime.now(timezone.utc) + timedelta(seconds=settings.JWT_EXP_DELTA_SECONDS),
+                                    "iat": datetime.now(timezone.utc),
+                                }
+                            print(payload)
+
+                            token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+                            return('correct otp',token,login_type)
                         except Exception as e:
                             print(e)
-                            return 'server error'
+                            return ('server error',)
                     else:
-                        return 'incorrect otp'
+                        return ('incorrect otp',)
                 else:
-                    return 'otp expired'
+                    return ('otp expired',)
             else:
-                return 'otp not sent'
-            return 'correct otp'
+                return ('otp not sent',)
     except Exception as e:
         print(e)
-        return 'error'
+        return ('server error',)
     
 def sendPasswordResetEmail(email):
     username=None    
@@ -260,7 +277,7 @@ def get_request_data(token):
             username=data[1]
             if(data[0]=='Admin'):
                 cursor.execute("""
-                        select * from tbl_request order by col_created_at DESC
+                        select request.*,login.col_username FROM tbl_request request JOIN tbl_login_data login ON request.col_agent_email_id= login.col_email order by request.col_created_at DESC;
                     """)
             else:
                 cursor.execute(f"""

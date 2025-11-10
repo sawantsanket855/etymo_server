@@ -49,6 +49,8 @@ def sendOTP_api(request):
 def verifyOTP_api(request):
     data=request.data
     result=verifyOTP(data['email'],data['otp'])
+    if result[0]=='correct otp':
+        return JsonResponse({'message':"correct otp",'token':result[1],'login_type':result[2]})
     return JsonResponse({'message':result})
 
 @api_view(['POST'])
