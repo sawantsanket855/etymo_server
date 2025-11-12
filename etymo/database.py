@@ -7,6 +7,18 @@ import secrets
 from psycopg2 import Binary
 from django.conf import settings
 from datetime import datetime, timedelta
+from sib_api_v3_sdk.rest import ApiException
+
+import sib_api_v3_sdk
+
+configuration = sib_api_v3_sdk.Configuration()
+configuration.api_key['api-key'] = settings.BREVO_API_KEY
+
+api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
+        sib_api_v3_sdk.ApiClient(configuration)
+    )
+
+
 
 def login(email,password,loginType):
     try:
@@ -56,6 +68,10 @@ def generate_otp():
     return otp
 
 def sendOTP(email):
+    sendEmailBrevo()
+    return 'success'
+
+
     otp=generate_otp()
 
     try:
@@ -826,3 +842,28 @@ def get_request_completion_document_data(id):
             return data
     except Exception as e:
         print(e)
+
+def sendEmailBrevo():
+    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+        to=[{"email":'sawantsanket855@gmail.com'}],
+        sender={"email": settings.DEFAULT_FROM_EMAIL, "name": "Etymology App"},
+        subject="Password Reset Request",
+        html_content="""
+        <html>
+            <body>
+                <p>Hello,</p>
+                <p>Click the link below to reset your password:</p>
+                <a href="https://your-frontend-domain/reset-password?email={0}">
+                    Reset Password
+                </a>
+            </body>
+        </html>
+        """.format('sawantsanket855@gmail.com'),)
+
+    try:
+        response = api_instance.send_transac_email(send_smtp_email)
+        print("✅ Email sent successfully:", response)
+        return {"success": True}
+    except ApiException as e:
+        print("❌ Error sending email:", e)
+        return {"success": False, "error": str(e)}

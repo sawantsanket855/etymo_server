@@ -7,4 +7,5 @@ django-cors-headers>=4.4
 djangorestframework>=3.16
 PyJWT>=2.10.1
 datetime>=5.5
+sib-api-v3-sdk
 
