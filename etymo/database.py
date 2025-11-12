@@ -84,7 +84,8 @@ def sendOTP(email):
 
     subject = "Welcome to GST Web Portal !"
     # from_email = "sanketsawant4123@gmail.com"
-    to = [email]
+    # to = [email]
+    to=[{"email": email}],
     # text_content = "OTP."
     html_content = f"<p><b>{otp}</b> This is your otp for login. Please don't share it with others</p>"
     # msg = EmailMultiAlternatives(subject, text_content, from_email, to)
