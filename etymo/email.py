@@ -17,7 +17,7 @@ def sendMail(subject,to,html_content):
         subject=subject,
         html_content=html_content
         )
-
+    
     try:
         response = api_instance.send_transac_email(send_smtp_email)
         print("✅ Email sent successfully:", response)

@@ -167,14 +167,18 @@ def sendPasswordResetEmail(email):
             username=rows[0][0]
             print(f'username is {username}')
         subject = "Reset Password"
-        from_email="sanketsawant4123@gmail.com"
-        to=[email]
-        text_content='Reset Password'
+        # from_email="sanketsawant4123@gmail.com"
+        to=[{"email": email}]
+        # text_content='Reset Password'
         html_content= f"<p>Hello {username},<br> We received a request to reset your password for your GST webportal account.<br>Click the link below to set a new password: <br><a href='{reset_link}'>reset_link</a><br>This link will expire in 15 minutes. If you did not request a password reset, you can safely ignore this email.</p>"
-        msg= EmailMultiAlternatives(subject,text_content,from_email,to)
-        msg.attach_alternative(html_content,"text/html")
-        msg.send()
-        return 'reset password email sent'
+        # msg= EmailMultiAlternatives(subject,text_content,from_email,to)
+        # msg.attach_alternative(html_content,"text/html")
+        # msg.send()
+        
+        if sendMail(subject=subject,to=to,html_content=html_content):
+            return 'reset password email sent'
+        else:
+            return 'error'
     except Exception as e:
          print(e)
          return 'server error'
@@ -395,14 +399,18 @@ def ca_cs_registartion(data,docs):
 
 def sendStatusUpdateEmail(agentEmail,agentUserName,requestId,requesCustomerName,requestStatus,requestInstruction):
     subject = "Request Status Update"
-    from_email="sanketsawant4123@gmail.com"
-    to=[agentEmail]
-    text_content='Request Status Update'
+    # from_email="sanketsawant4123@gmail.com"
+    to=[{"email": agentEmail}]
+    # text_content='Request Status Update'
     html_content= f"<p>Dear {agentUserName},<br> We would like to inform you that the status of your request has been updated. Please find the details below : <br><br>Request ID: {requestId}<br>Customer Name: {requesCustomerName}<br>Current Status: <b>{requestStatus}</b><br>Instruction: {requestInstruction if requestInstruction else 'NONE'}<br><br><br> If you have any questions or need further assistance, please feel free to contact us.<br><br>Thank you!</p>"
-    msg= EmailMultiAlternatives(subject,text_content,from_email,to)
-    msg.attach_alternative(html_content,"text/html")
-    msg.send()    
-    print('status update mail sent')
+    # msg= EmailMultiAlternatives(subject,text_content,from_email,to)
+    # msg.attach_alternative(html_content,"text/html")
+    # msg.send()  
+    if sendMail(subject=subject,to=to,html_content=html_content):
+        print('status update mail sent')
+    else:
+        print('status update mail not sent')
+    
 
 def update_request_status(requestId,requestStatus,requestInstruction):
     try:
