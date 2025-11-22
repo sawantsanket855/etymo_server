@@ -292,7 +292,7 @@ def get_request_data(token):
             username=data[1]
             if(data[0]=='Admin'):
                 cursor.execute("""
-                        select request.*,login.col_username FROM tbl_request request JOIN tbl_login_data login ON request.col_agent_email_id= login.col_email order by request.col_created_at DESC;
+                        select request.*,login.col_username FROM tbl_request request JOIN tbl_login_data login ON request.col_agent_email_id= login.col_email where col_status <> 'Cancelled' order by request.col_created_at DESC;
                     """)
             else:
                 cursor.execute(f"""
@@ -425,6 +425,9 @@ def update_request_status(requestId,requestStatus,requestInstruction):
                     status_time_col="col_rejected_at"
                 case "Completed":
                     status_time_col="col_completed_at"
+                    status_des_col='col_com_des'
+                case "Cancelled":
+                    status_time_col="col_rejected_at"
                     status_des_col='col_com_des'
                 case _:
                     return "invalid status"
