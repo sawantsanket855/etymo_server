@@ -376,7 +376,6 @@ def get_request_completion_document_api(request):
     try:
         print(' get_request_completion_document_api')
         response= get_request_completion_document(data['id'])
-
         print(f'data having {len(response)} data')
         return JsonResponse({'result':response})
     except Exception as e:
@@ -398,6 +397,18 @@ def get_request_completion_document_data_api(request):
             file_data = bytes(file_data)
             print('converted to bytes')
         response= HttpResponse(file_data,content_type=response[0])
+        return response
+    except Exception as e:
+        print('api call error')
+        print(e)
+
+@api_view(['POST'])
+def get_agent_data_list_api(request):
+    data =request.data
+    try:
+        print('in function get_agent_data_list_api')
+        response= get_agent_data_list(data['token'])
+        response= JsonResponse({'result':response[0],'message':response[1]})
         return response
     except Exception as e:
         print('api call error')

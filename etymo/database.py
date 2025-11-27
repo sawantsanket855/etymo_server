@@ -849,3 +849,31 @@ def get_request_completion_document_data(id):
     except Exception as e:
         print(e)
 
+
+def get_agent_data_list(token):
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        email=payload['email']
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                    select col_login_type from tbl_login_data where col_email='{email}';
+                """)
+            data=cursor.fetchone()
+            print(data[0])
+            if(data[0]=='Admin'):
+                cursor.execute("""
+                        select a.col_username,a.col_email,b.col_balance from tbl_login_data as a join tbl_agent_data as b on a.col_email=b.col_email;
+                    """)
+                data=cursor.fetchall()
+                print(data)
+                return (data,"success")
+            else:
+                pass
+                   
+    except jwt.ExpiredSignatureError:
+        return ([],"Token expired, Please login again!")
+    except jwt.InvalidTokenError:
+        return ([],"Invalid token, Please login again!")
+    except Exception as e:
+        print(e)
+        return ([],"data not found")

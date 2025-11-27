@@ -49,5 +49,6 @@ urlpatterns = [
     path('complete_request/',complete_request_api),
     path('get_request_completion_document/',get_request_completion_document_api),
     path('get_request_completion_document_data/',get_request_completion_document_data_api),
+    path('get_agent_data_list/',get_agent_data_list_api),
 
 ]
