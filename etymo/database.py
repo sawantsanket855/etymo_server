@@ -397,7 +397,7 @@ def ca_cs_registartion(data,docs):
         return 'server error'
 
 
-def sendStatusUpdateEmail(agentEmail,agentUserName,requestId,requesCustomerName,requestStatus,requestInstruction):
+def sendStatusUpdateEmail(agentEmail,agentUserName,requestId,requesCustomerName,requestStatus,requestInstruction,attachments=None):
     subject = "Request Status Update"
     # from_email="sanketsawant4123@gmail.com"
     to=[{"email": agentEmail}]
@@ -406,7 +406,7 @@ def sendStatusUpdateEmail(agentEmail,agentUserName,requestId,requesCustomerName,
     # msg= EmailMultiAlternatives(subject,text_content,from_email,to)
     # msg.attach_alternative(html_content,"text/html")
     # msg.send()  
-    if sendMail(subject=subject,to=to,html_content=html_content):
+    if sendMail(subject=subject,to=to,html_content=html_content,attachments=attachments):
         print('status update mail sent')
     else:
         print('status update mail not sent')
@@ -809,7 +809,7 @@ def complete_request(request_id,description,documents,token):
             )
             row=cursor.fetchone()
             agent_username=row[0]
-            sendStatusUpdateEmail(agentEmail=agent_email,agentUserName=agent_username , requestId=request_id,requesCustomerName=reques_customer_name,requestStatus="Completed",requestInstruction=description)
+            sendStatusUpdateEmail(agentEmail=agent_email,agentUserName=agent_username , requestId=request_id,requesCustomerName=reques_customer_name,requestStatus="Completed",requestInstruction=description,attachments=documents)
     
             print('submitted completion request')
             return 'submitted'
