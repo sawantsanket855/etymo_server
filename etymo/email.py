@@ -27,14 +27,20 @@ def sendMail(subject,to,html_content, attachments=None):
                     "name": filename,
                     "content": encoded
                 })
-
-        send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+        if(brevo_attachments):
+            send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
             to=to,
             sender={"email": settings.DEFAULT_FROM_EMAIL, "name": "GST Web Portal"},
             subject=subject,
-            html_content=html_content,
-            attachment=brevo_attachments
-        )
+            html_content=html_content)
+        
+        else:
+            send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+                to=to,
+                sender={"email": settings.DEFAULT_FROM_EMAIL, "name": "GST Web Portal"},
+                subject=subject,
+                html_content=html_content,
+                attachment=brevo_attachments)
         response = api_instance.send_transac_email(send_smtp_email)
         print("✅ Email sent successfully:", response)
         return True
