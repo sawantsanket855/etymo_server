@@ -11,5 +11,6 @@ sib-api-v3-sdk
 razorpay
 firebase-admin
 python-dotenv
+vosk
 
 
