@@ -10,6 +10,6 @@ datetime>=5.5
 sib-api-v3-sdk
 razorpay
 firebase-admin
-
+python-dotenv
 
 
