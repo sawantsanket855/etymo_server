@@ -412,30 +412,46 @@ def sendStatusUpdateEmail(agentEmail,agentUserName,requestId,requesCustomerName,
         print('status update mail not sent')
     
 
-def update_request_status(requestId,requestStatus,requestInstruction):
+def update_request_status(requestId,requestStatus,requestInstruction,attachment=None):
     try:
         print('in update_request_status')
         with connection.cursor() as cursor:
+            #get old status
+            cursor.execute(
+                f"""
+                    SELECT col_status from tbl_request where col_id = %s;
+                 """ ,(requestId)  
+            )
+            row=cursor.fetchone()
+            old_status=row[0]
             status_time_col=''
             status_des_col='col_instruction'
             match(requestStatus):
                 case "Approved":
+                    if old_status!='Under Review':
+                        return 'refresh data'
                     status_time_col="col_approved_at"
                 case "Rejected":
+                    if old_status!='Under Review':
+                        return 'refresh data'
                     status_time_col="col_rejected_at"
                 case "Completed":
+                    if old_status!='Assigned':
+                        return 'refresh data'
                     status_time_col="col_completed_at"
                     status_des_col='col_com_des'
                 case "Cancelled":
+                    if old_status!='Under Review':
+                        return 'refresh data'
                     status_time_col="col_rejected_at"
                     status_des_col='col_com_des'
                 case _:
                     return "invalid status"
                 
-            print(f"""
-                    UPDATE tbl_request SET col_status= %s, {status_des_col} = %s, {status_time_col}= NOW() where col_id = %s RETURNING col_status;
-                    SELECT col_agent_email_id,col_id,col_name from tbl_request where col_id = %s;
-                 """ ,(requestStatus,requestInstruction,requestId,requestId) )
+            # print(f"""
+            #         UPDATE tbl_request SET col_status= %s, {status_des_col} = %s, {status_time_col}= NOW() where col_id = %s RETURNING col_status;
+            #         SELECT col_agent_email_id,col_id,col_name from tbl_request where col_id = %s;
+            #      """ ,(requestStatus,requestInstruction,requestId,requestId) )
             
             cursor.execute(
                 f"""
@@ -457,7 +473,7 @@ def update_request_status(requestId,requestStatus,requestInstruction):
             row=cursor.fetchone()
             agent_username=row[0]
             print(agent_email,agent_username ,request_id,reques_customer_name,requestStatus,requestInstruction)
-            sendStatusUpdateEmail(agentEmail=agent_email,agentUserName=agent_username , requestId=request_id,requesCustomerName=reques_customer_name,requestStatus=requestStatus,requestInstruction=requestInstruction)
+            sendStatusUpdateEmail(agentEmail=agent_email,agentUserName=agent_username , requestId=request_id,requesCustomerName=reques_customer_name,requestStatus=requestStatus,requestInstruction=requestInstruction,attachments=attachment)
             return "success"
 
     except Exception as e:
@@ -483,6 +499,16 @@ def update_request_status(requestId,requestStatus,requestInstruction):
 def assign_ca_cs(ca_cs_id,requestId):
     try:
         with connection.cursor() as cursor:
+            cursor.execute(
+                f"""
+                    SELECT col_status from tbl_request where col_id = %s;
+                 """ ,(requestId)  
+            )
+            row=cursor.fetchone()
+            old_status=row[0]
+
+            if (old_status!='Approved'):
+                return 'refresh data'
             cursor.execute(f"""
                     UPDATE tbl_request SET col_assigned_ca_cs_id={ca_cs_id},col_status='Assigned',col_assigned_at=NOW() where col_id ={requestId};
                     UPDATE tbl_ca_cs SET col_assigned_request= array_append(col_assigned_request, {requestId}) where col_id={ca_cs_id};
@@ -654,11 +680,9 @@ def update_payment_request_status(paymentRequestId,requestInstruction):
             )
             row=cursor.fetchone()
             agent_email=row[0]
-            # agent_email='prashant@gmail.com'
             request_customer_name=row[1]
             amount=row[2]
             print(f'agent email : {agent_email}')
-
             cursor.execute(
                 f"""
                     CREATE TABLE IF NOT EXISTS tbl_transactions(col_id SERIAL PRIMARY KEY,col_amount INT, col_type TEXT, col_user_email TEXT,col_purpose TEXT,col_reference_id INT, col_created_at TIMESTAMPTZ default NOW());
@@ -773,9 +797,10 @@ def complete_request(request_id,description,documents,token):
     print(token)
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-        result=update_request_status(request_id,'Completed',description)
+        result=update_request_status(request_id,'Completed',description,attachment=documents)
+
         if result!="success":
-            return
+            return result
         with connection.cursor() as cursor:
 
             for doc in documents:
@@ -809,7 +834,7 @@ def complete_request(request_id,description,documents,token):
             )
             row=cursor.fetchone()
             agent_username=row[0]
-            sendStatusUpdateEmail(agentEmail=agent_email,agentUserName=agent_username , requestId=request_id,requesCustomerName=reques_customer_name,requestStatus="Completed",requestInstruction=description,attachments=documents)
+            # sendStatusUpdateEmail(agentEmail=agent_email,agentUserName=agent_username , requestId=request_id,requesCustomerName=reques_customer_name,requestStatus="Completed",requestInstruction=description,attachments=documents)
     
             print('submitted completion request')
             return 'submitted'

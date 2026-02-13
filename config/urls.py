@@ -15,9 +15,10 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 # from etymo.api import ca_cs_registartion_api, check_connection, get_request_data_api, get_request_document_api,get_word_data,login_api,register_api,sendOTP_api, sendPasswordResetEmail_api, submit_request_api, updatePassword_api,verifyOTP_api,get_request_document_data_api
 from etymo.api import *
+from etymo.payment_api import razorpay_create_request_api, razorpay_payment_data_api
 urlpatterns = [
     path('admin/', admin.site.urls),
     # path('check_connection/', check_connection),
@@ -50,5 +51,7 @@ urlpatterns = [
     path('get_request_completion_document/',get_request_completion_document_api),
     path('get_request_completion_document_data/',get_request_completion_document_data_api),
     path('get_agent_data_list/',get_agent_data_list_api),
-
+    path('razorpay_payment_data/',razorpay_payment_data_api),
+    path('razorpay_create_request/',razorpay_create_request_api),
+    path('effcommunication/', include('eff_communication.urls')),
 ]
