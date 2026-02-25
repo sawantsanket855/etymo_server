@@ -43,6 +43,7 @@ urlpatterns = [
     path('get_payment_request_document/',get_payment_request_document_api),
     path('get_payment_request_document_data/',get_payment_request_document_data_api),
     path('verifyPaymentRequest/',update_payment_request_status_api),
+    path('rejectPaymentRequest/', reject_payment_request_api),
     path('get_ca_cs_document/',get_ca_cs_document_api),
     path('get_ca_cs_document_data/',get_ca_cs_document_data_api),
     path('get_agent_balance/',get_agent_balance_api),
@@ -56,6 +57,12 @@ urlpatterns = [
     path('update_service/', update_service_api),
     path('delete_service/', delete_service_api),
     path('update_ca_cs/', update_ca_cs_api),
+    path('get_ca_cs_slots/', get_ca_cs_slots_api),
+    path('update_ca_cs_slots/', update_ca_cs_slots_api),
+    path('get_ca_cs_special_slots/', get_ca_cs_special_slots_api),
+    path('update_ca_cs_special_slots/', update_ca_cs_special_slots_api),
     path('razorpay_payment_data/',razorpay_payment_data_api),
     path('razorpay_create_request/',razorpay_create_request_api),
+    path('get_my_cacs_data/', get_my_cacs_data_api),
+
 ]

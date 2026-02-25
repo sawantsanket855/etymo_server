@@ -187,17 +187,19 @@ def update_request_status_api(request):
 
 @api_view(['POST'])    
 def get_ca_cs_data_api(request):
-    data=request.data
+    data = request.data
     try:
-        print(data)
-        print('get_ca_cs_data_api')
-        response,message= get_ca_cs_data(data['token'])
-        print(response,message)
-        response= JsonResponse({'result':response,'message':message})
+        available_now = data.get('available_now', False)
+        print(f'get_ca_cs_data_api, available_now: {available_now}')
+        response, message = get_ca_cs_data(data['token'], available_now)
+        print(response, message)
+        response = JsonResponse({'result': response, 'message': message})
         return response
     except Exception as e:
         print('api call error')
         print(e)
+        return JsonResponse({'result': [], 'message': 'server error'})
+
 
 
 
@@ -303,6 +305,19 @@ def update_payment_request_status_api(request):
     except Exception as e:
         print('error',e)
         return JsonResponse({'message':'server error'})
+
+
+@api_view(['POST'])
+def reject_payment_request_api(request):
+    try:
+        data = request.data
+        print(data)
+        response = reject_payment_request(data['paymentRequestID'], data.get('rejectReason', 'Rejected by admin'))
+        return JsonResponse({'message': response})
+    except Exception as e:
+        print('error in reject_payment_request_api', e)
+        return JsonResponse({'message': 'server error'})
+
 
 
 @api_view(['POST'])    
@@ -467,5 +482,56 @@ def delete_service_api(request):
         print(f"API Error in delete_service_api: {e}")
         return JsonResponse({'message': 'error'})
 
+@api_view(['POST'])
+def get_ca_cs_slots_api(request):
+    try:
+        data = request.data
+        response, message = get_ca_cs_slots(data['ca_cs_id'])
+        return JsonResponse({'result': response, 'message': message})
+    except Exception as e:
+        print(f"API Error in get_ca_cs_slots_api: {e}")
+        return JsonResponse({'message': 'error'})
+
+@api_view(['POST'])
+def update_ca_cs_slots_api(request):
+    try:
+        data = request.data
+        message = update_ca_cs_slots(data['ca_cs_id'], data['slots'])
+        return JsonResponse({'message': message})
+    except Exception as e:
+        print(f"API Error in update_ca_cs_slots_api: {e}")
+        return JsonResponse({'message': 'error'})
+
+@api_view(['POST'])
+def get_ca_cs_special_slots_api(request):
+    try:
+        data = request.data
+        response, message = get_ca_cs_special_slots(data['ca_cs_id'])
+        return JsonResponse({'result': response, 'message': message})
+    except Exception as e:
+        print(f"API Error in get_ca_cs_special_slots_api: {e}")
+        return JsonResponse({'message': 'error'})
+
+@api_view(['POST'])
+def update_ca_cs_special_slots_api(request):
+    try:
+        data = request.data
+        message = update_ca_cs_special_slots(data['ca_cs_id'], data['date'], data['slots'])
+        return JsonResponse({'message': message})
+    except Exception as e:
+        print(f"API Error in update_ca_cs_special_slots_api: {e}")
+        return JsonResponse({'message': 'error'})
 
 
+
+
+
+@api_view(['POST'])
+def get_my_cacs_data_api(request):
+    try:
+        data = request.data
+        result, message = get_my_cacs_data(data['token'])
+        return JsonResponse({'result': result, 'message': message})
+    except Exception as e:
+        print(f"API Error in get_my_cacs_data_api: {e}")
+        return JsonResponse({'result': None, 'message': 'error'})

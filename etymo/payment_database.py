@@ -30,43 +30,71 @@ def razorpay_create_request(token,amount):
         print(e)
         return ('server error')
     
-def razorpay_payment_data(payment_id,order_id,signature):
+def razorpay_payment_data(payment_id, order_id, signature):
     params = {
-    'razorpay_order_id': order_id,
-    'razorpay_payment_id': payment_id,
-    'razorpay_signature': signature
+        'razorpay_order_id': order_id,
+        'razorpay_payment_id': payment_id,
+        'razorpay_signature': signature
     }
     try:
         client.utility.verify_payment_signature(params)
-        print("Payment Signature Verified ✔ here to add amount in wallet")
-        print('in update_payment_request_status')
+        print("Payment Signature Verified ✔")
         try:
             with connection.cursor() as cursor:
+                # 1. Fetch order details
                 cursor.execute(
-                    f"""
-                        SELECT col_agent_email,col_amount from tbl_razor_order_id where col_order_id = %s;
-                     """ ,(order_id,)  
+                    "SELECT col_agent_email, col_amount FROM tbl_razor_order_id WHERE col_order_id = %s;",
+                    (order_id,)
                 )
-                row=cursor.fetchone()
-                agent_email=row[0]
-                amount=row[1]
-                print(f'agent email : {row[0]}   amount : {row[1]}')
+                row = cursor.fetchone()
+                if not row:
+                    print(f"Order ID {order_id} not found in tbl_razor_order_id")
+                    return 'order_not_found'
+                
+                agent_email = row[0]
+                amount = row[1]
+                print(f'agent email: {agent_email}, amount: {amount}')
+
+                # 2. Ensure transactions table exists
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS tbl_transactions(
+                        col_id SERIAL PRIMARY KEY,
+                        col_amount INT, 
+                        col_type TEXT, 
+                        col_user_email TEXT,
+                        col_purpose TEXT,
+                        col_reference_id TEXT, 
+                        col_created_at TIMESTAMPTZ DEFAULT NOW()
+                    );
+                """)
+
+                # 3. Record transaction
                 cursor.execute(
-                    f"""
-                        CREATE TABLE IF NOT EXISTS tbl_transactions(col_id SERIAL PRIMARY KEY,col_amount INT, col_type TEXT, col_user_email TEXT,col_purpose TEXT,col_reference_id INT, col_created_at TIMESTAMPTZ default NOW());
-                        INSERT INTO tbl_transactions(col_type,col_amount, col_user_email,col_purpose,col_reference_id) VALUES('credit',{amount},'{agent_email}','payment_verification',{100});
                     """
+                    INSERT INTO tbl_transactions(col_type, col_amount, col_user_email, col_purpose, col_reference_id) 
+                    VALUES('credit', %s, %s, 'razorpay_payment', %s);
+                    """,
+                    (amount, agent_email, payment_id)
                 )
+
+                # 4. Update agent balance
                 cursor.execute(
-                    f"""
-                        UPDATE tbl_agent_data SET col_balance = CAST(col_balance as INT) + {amount} where col_email ='{agent_email}';
-                     """   
+                    """
+                    UPDATE tbl_agent_data 
+                    SET col_balance = CAST(col_balance AS INT) + %s 
+                    WHERE col_email = %s;
+                    """,
+                    (amount, agent_email)
                 )
-                print ('amount is added in wallet')
+                
+                print('Amount added to wallet and transaction recorded')
                 return 'success'
         except Exception as e:
-            print('error while updating wallet')
+            print('Error while updating wallet or recording transaction:')
             print(e)
+            return 'db_error'
        
-    except:
+    except Exception as e:
         print("Signature Verification Failed ❌")
+        print(e)
+        return 'signature_failed'
