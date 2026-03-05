@@ -15,10 +15,10 @@ def razorpay_create_request(token,amount):
 
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                            CREATE TABLE IF NOT EXISTS tbl_razor_order_id(col_id SERIAL PRIMARY KEY, col_order_id TEXT,col_agent_email TEXT,col_amount INT);
+                            CREATE TABLE IF NOT EXISTS gst_tbl_razor_order_id(col_id SERIAL PRIMARY KEY, col_order_id TEXT,col_agent_email TEXT,col_amount INT);
                             """)
             cursor.execute(f"""
-                           INSERT INTO tbl_razor_order_id (col_order_id,col_agent_email,col_amount)  VALUES (%s,%s,%s);
+                           INSERT INTO gst_tbl_razor_order_id (col_order_id,col_agent_email,col_amount)  VALUES (%s,%s,%s);
                             """,(payment['id'],payload['email'],amount/100) )
             print('submitted order id')
             return ('success',amount,payment['id'])
@@ -43,12 +43,12 @@ def razorpay_payment_data(payment_id, order_id, signature):
             with connection.cursor() as cursor:
                 # 1. Fetch order details
                 cursor.execute(
-                    "SELECT col_agent_email, col_amount FROM tbl_razor_order_id WHERE col_order_id = %s;",
+                    "SELECT col_agent_email, col_amount FROM gst_tbl_razor_order_id WHERE col_order_id = %s;",
                     (order_id,)
                 )
                 row = cursor.fetchone()
                 if not row:
-                    print(f"Order ID {order_id} not found in tbl_razor_order_id")
+                    print(f"Order ID {order_id} not found in gst_tbl_razor_order_id")
                     return 'order_not_found'
                 
                 agent_email = row[0]
@@ -57,7 +57,7 @@ def razorpay_payment_data(payment_id, order_id, signature):
 
                 # 2. Ensure transactions table exists
                 cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS tbl_transactions(
+                    CREATE TABLE IF NOT EXISTS gst_tbl_transactions(
                         col_id SERIAL PRIMARY KEY,
                         col_amount INT, 
                         col_type TEXT, 
@@ -71,7 +71,7 @@ def razorpay_payment_data(payment_id, order_id, signature):
                 # 3. Record transaction
                 cursor.execute(
                     """
-                    INSERT INTO tbl_transactions(col_type, col_amount, col_user_email, col_purpose, col_reference_id) 
+                    INSERT INTO gst_tbl_transactions(col_type, col_amount, col_user_email, col_purpose, col_reference_id) 
                     VALUES('credit', %s, %s, 'razorpay_payment', %s);
                     """,
                     (amount, agent_email, payment_id)
@@ -80,7 +80,7 @@ def razorpay_payment_data(payment_id, order_id, signature):
                 # 4. Update agent balance
                 cursor.execute(
                     """
-                    UPDATE tbl_agent_data 
+                    UPDATE gst_tbl_agent_data 
                     SET col_balance = CAST(col_balance AS INT) + %s 
                     WHERE col_email = %s;
                     """,

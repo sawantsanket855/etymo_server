@@ -39,23 +39,23 @@ def ensure_all_tables():
         with connection.cursor() as cursor:
             # 1. Core Authentication & Agent Tables
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS tbl_login_data(
+                CREATE TABLE IF NOT EXISTS gst_tbl_login_data(
                     col_username TEXT,
                     col_email TEXT UNIQUE,
                     col_password TEXT,
                     col_login_type TEXT DEFAULT 'Agent'
                 );
-                CREATE TABLE IF NOT EXISTS tbl_agent_data(
-                    col_email TEXT REFERENCES tbl_login_data(col_email) ON DELETE CASCADE,
+                CREATE TABLE IF NOT EXISTS gst_tbl_agent_data(
+                    col_email TEXT REFERENCES gst_tbl_login_data(col_email) ON DELETE CASCADE,
                     col_balance INT DEFAULT 0
                 );
-                CREATE TABLE IF NOT EXISTS tbl_otp(
+                CREATE TABLE IF NOT EXISTS gst_tbl_otp(
                     col_email_id TEXT,
                     col_otp INT,
                     col_gen_time TIMESTAMPTZ DEFAULT NOW(),
                     col_isused BOOLEAN DEFAULT FALSE
                 );
-                CREATE TABLE IF NOT EXISTS tbl_reset_token(
+                CREATE TABLE IF NOT EXISTS gst_tbl_reset_token(
                     col_email_id TEXT,
                     col_reset_token TEXT,
                     col_gen_time TIMESTAMPTZ DEFAULT NOW(),
@@ -65,7 +65,7 @@ def ensure_all_tables():
 
             # 2. CA/CS Management Tables
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS tbl_ca_cs(
+                CREATE TABLE IF NOT EXISTS gst_tbl_ca_cs(
                     col_id SERIAL PRIMARY KEY, 
                     col_name TEXT,
                     col_role TEXT, 
@@ -77,23 +77,23 @@ def ensure_all_tables():
                     col_created_at TIMESTAMPTZ DEFAULT NOW(),
                     col_assigned_request INT[] DEFAULT '{}'
                 );
-                CREATE TABLE IF NOT EXISTS tbl_ca_cs_documents (
+                CREATE TABLE IF NOT EXISTS gst_tbl_ca_cs_documents (
                     col_id SERIAL PRIMARY KEY,
-                    col_ca_cs_id INT REFERENCES tbl_ca_cs(col_id) ON DELETE CASCADE,
+                    col_ca_cs_id INT REFERENCES gst_tbl_ca_cs(col_id) ON DELETE CASCADE,
                     col_filename TEXT,
                     col_content_type TEXT,
                     col_file_data BYTEA,
                     col_created_at TIMESTAMPTZ DEFAULT NOW()
                 );
-                CREATE TABLE IF NOT EXISTS tbl_ca_cs_slots(
+                CREATE TABLE IF NOT EXISTS gst_tbl_ca_cs_slots(
                     col_id SERIAL PRIMARY KEY,
-                    col_ca_cs_id INT REFERENCES tbl_ca_cs(col_id) ON DELETE CASCADE,
+                    col_ca_cs_id INT REFERENCES gst_tbl_ca_cs(col_id) ON DELETE CASCADE,
                     col_day TEXT,
                     col_slot_number INT
                 );
-                CREATE TABLE IF NOT EXISTS tbl_ca_cs_special_slots(
+                CREATE TABLE IF NOT EXISTS gst_tbl_ca_cs_special_slots(
                     col_id SERIAL PRIMARY KEY,
-                    col_ca_cs_id INT REFERENCES tbl_ca_cs(col_id) ON DELETE CASCADE,
+                    col_ca_cs_id INT REFERENCES gst_tbl_ca_cs(col_id) ON DELETE CASCADE,
                     col_date DATE,
                     col_slot_number INT
                 );
@@ -101,13 +101,13 @@ def ensure_all_tables():
 
             # 3. Request & Service Tables
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS tbl_services(
+                CREATE TABLE IF NOT EXISTS gst_tbl_services(
                     col_id SERIAL PRIMARY KEY,
                     col_name TEXT,
                     col_price TEXT,
                     col_created_at TIMESTAMPTZ DEFAULT NOW()
                 );
-                CREATE TABLE IF NOT EXISTS tbl_request(
+                CREATE TABLE IF NOT EXISTS gst_tbl_request(
                     col_id SERIAL PRIMARY KEY, 
                     col_name TEXT,
                     col_type TEXT,
@@ -125,9 +125,9 @@ def ensure_all_tables():
                     col_rejected_at TIMESTAMPTZ,
                     col_assigned_at TIMESTAMPTZ
                 );
-                CREATE TABLE IF NOT EXISTS tbl_documents (
+                CREATE TABLE IF NOT EXISTS gst_tbl_documents (
                     col_id SERIAL PRIMARY KEY,
-                    col_request_id INT REFERENCES tbl_request(col_id) ON DELETE CASCADE,
+                    col_request_id INT REFERENCES gst_tbl_request(col_id) ON DELETE CASCADE,
                     col_filename TEXT,
                     col_content_type TEXT,
                     col_file_data BYTEA,
@@ -137,7 +137,7 @@ def ensure_all_tables():
 
             # 4. Payment & Transaction Tables
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS tbl_payment_request(
+                CREATE TABLE IF NOT EXISTS gst_tbl_payment_request(
                     col_id SERIAL PRIMARY KEY, 
                     col_name TEXT,
                     col_amount TEXT,
@@ -151,15 +151,15 @@ def ensure_all_tables():
                     col_created_at TIMESTAMPTZ DEFAULT NOW(),
                     col_agent_email_id TEXT
                 );
-                CREATE TABLE IF NOT EXISTS tbl_payment_documents (
+                CREATE TABLE IF NOT EXISTS gst_tbl_payment_documents (
                     col_id SERIAL PRIMARY KEY,
-                    col_request_id INT REFERENCES tbl_payment_request(col_id) ON DELETE CASCADE,
+                    col_request_id INT REFERENCES gst_tbl_payment_request(col_id) ON DELETE CASCADE,
                     col_filename TEXT,
                     col_content_type TEXT,
                     col_file_data BYTEA,
                     col_created_at TIMESTAMPTZ DEFAULT NOW()
                 );
-                CREATE TABLE IF NOT EXISTS tbl_transactions(
+                CREATE TABLE IF NOT EXISTS gst_tbl_transactions(
                     col_id SERIAL PRIMARY KEY,
                     col_amount INT, 
                     col_type TEXT, 
@@ -168,9 +168,9 @@ def ensure_all_tables():
                     col_reference_id TEXT, 
                     col_created_at TIMESTAMPTZ DEFAULT NOW()
                 );
-                CREATE TABLE IF NOT EXISTS tbl_completion_documents(
+                CREATE TABLE IF NOT EXISTS gst_tbl_completion_documents(
                     col_id SERIAL PRIMARY KEY,
-                    col_request_id INT REFERENCES tbl_request(col_id) ON DELETE CASCADE,
+                    col_request_id INT REFERENCES gst_tbl_request(col_id) ON DELETE CASCADE,
                     col_filename TEXT,
                     col_content_type TEXT,
                     col_file_data BYTEA,
@@ -179,11 +179,11 @@ def ensure_all_tables():
             """)
 
             # Seed Admin if no users exist
-            cursor.execute("SELECT COUNT(*) FROM tbl_login_data")
+            cursor.execute("SELECT COUNT(*) FROM gst_tbl_login_data")
             if cursor.fetchone()[0] == 0:
                 print("Seeding default Admin account...")
                 cursor.execute("""
-                    INSERT INTO tbl_login_data (col_username, col_email, col_password, col_login_type)
+                    INSERT INTO gst_tbl_login_data (col_username, col_email, col_password, col_login_type)
                     VALUES ('Admin', 'admin@gst.com', 'admin123', 'Admin');
                 """)
             
@@ -195,7 +195,7 @@ def login(email,password,loginType):
     ensure_all_tables()
     try:
         with connection.cursor() as cursor:
-            cursor.execute(f"select col_email from tbl_login_data where col_email = '{email}' and col_password = '{password}' and col_login_type='{loginType}';")
+            cursor.execute(f"select col_email from gst_tbl_login_data where col_email = '{email}' and col_password = '{password}' and col_login_type='{loginType}';")
             rows=cursor.fetchone()
             if rows:
                 print(f'data for jwt {rows}')
@@ -221,8 +221,8 @@ def register(username,email,password):
     try:
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                           insert into tbl_login_data (col_username,col_email,col_password) values('{username}','{email}','{password}');
-                           insert into tbl_agent_data(col_email) values('{email}')
+                           insert into gst_tbl_login_data (col_username,col_email,col_password) values('{username}','{email}','{password}');
+                           insert into gst_tbl_agent_data(col_email) values('{email}')
                            """)
             rows=cursor.rowcount
             print(rows)
@@ -244,16 +244,16 @@ def sendOTP(email):
     try:
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                            select * from tbl_login_data where col_email = '{email}' 
+                            select * from gst_tbl_login_data where col_email = '{email}' 
                             """)
             rows=cursor.rowcount
             if(rows):
-                cursor.execute(f'''CREATE TABLE IF NOT EXISTS tbl_otp(
+                cursor.execute(f'''CREATE TABLE IF NOT EXISTS gst_tbl_otp(
                                col_email_id TEXT,
                                col_otp INT,
                                col_gen_time TIMESTAMPTZ DEFAULT NOW(),
                                col_isused BOOLEAN DEFAULT FALSE);
-                               insert into tbl_otp(col_email_id,col_otp) values('{email}','{otp}');''')
+                               insert into gst_tbl_otp(col_email_id,col_otp) values('{email}','{otp}');''')
             else:
                 return 'email not registerd'
     except Exception as e:
@@ -296,13 +296,13 @@ def verifyOTP(email,otp):
             
     try:
         with connection.cursor() as cursor:
-            cursor.execute(f"select col_login_type from tbl_login_data where col_email = '{email}';")
+            cursor.execute(f"select col_login_type from gst_tbl_login_data where col_email = '{email}';")
             rows=cursor.fetchone()
             login_type=rows[0]
             if not rows:
                 return ('email not registered',)
-            # cursor.execute(f"select * from tbl_otp where col_email_id='{email}' AND col_gen_time > NOW() - INTERVAL '5 minutes' ORDER BY col_gen_time DESC LIMIT 5")
-            cursor.execute(f"select * from tbl_otp where col_email_id='{email}' ORDER BY col_gen_time DESC LIMIT 1")
+            # cursor.execute(f"select * from gst_tbl_otp where col_email_id='{email}' AND col_gen_time > NOW() - INTERVAL '5 minutes' ORDER BY col_gen_time DESC LIMIT 5")
+            cursor.execute(f"select * from gst_tbl_otp where col_email_id='{email}' ORDER BY col_gen_time DESC LIMIT 1")
             rows=cursor.fetchall()
             if(rows):
                 data=rows[0]
@@ -312,7 +312,7 @@ def verifyOTP(email,otp):
                     if(data[1]==int(otp)):
                         print('correct otp')
                         try:
-                            cursor.execute(f"update tbl_otp SET col_isused = True WHERE col_email_id ='{email}' AND col_otp='{data[1]}';")
+                            cursor.execute(f"update gst_tbl_otp SET col_isused = True WHERE col_email_id ='{email}' AND col_otp='{data[1]}';")
                             print('otp status updated')
                             payload = {
                                     "email": email,
@@ -345,8 +345,8 @@ def sendPasswordResetEmail(email):
         with connection.cursor() as cursor:
             print(email)
             cursor.execute(f"""
-                           create table IF NOT EXISTS tbl_login_data(col_username TEXT,col_email TEXT UNIQUE,col_password TEXT);
-                           select col_username from tbl_login_data where col_email ='{email}'""")
+                           create table IF NOT EXISTS gst_tbl_login_data(col_username TEXT,col_email TEXT UNIQUE,col_password TEXT);
+                           select col_username from gst_tbl_login_data where col_email ='{email}'""")
             rows=cursor.fetchall()
             username=rows[0][0]
             print(f'username is {username}')
@@ -379,12 +379,12 @@ def createResetPasswordToken(email):
     reset_token=secrets.token_urlsafe(32)
     try:
         with connection.cursor() as cursor:
-            cursor.execute(f'''CREATE TABLE IF NOT EXISTS tbl_reset_token(
+            cursor.execute(f'''CREATE TABLE IF NOT EXISTS gst_tbl_reset_token(
                                col_email_id TEXT,
                                col_reset_token TEXT,
                                col_gen_time TIMESTAMPTZ DEFAULT NOW(),
                                col_isused BOOLEAN DEFAULT FALSE);
-                               insert into tbl_reset_token(col_email_id,col_reset_token) values('{email}','{reset_token}');''') 
+                               insert into gst_tbl_reset_token(col_email_id,col_reset_token) values('{email}','{reset_token}');''') 
             return reset_token
 
     except Exception as e:
@@ -394,11 +394,11 @@ def createResetPasswordToken(email):
 def updatePassword(email,reset_token,password):
     try:
         with connection.cursor() as cursor:
-            cursor.execute(f"SELECT col_email_id FROM tbl_reset_token where col_email_id='{email}' and col_reset_token='{reset_token}' and col_gen_time > NOW() - INTERVAL '15 minutes' and col_isused=False;")
+            cursor.execute(f"SELECT col_email_id FROM gst_tbl_reset_token where col_email_id='{email}' and col_reset_token='{reset_token}' and col_gen_time > NOW() - INTERVAL '15 minutes' and col_isused=False;")
             rows=cursor.fetchall()
             if rows:
-                cursor.execute(f'''update tbl_login_data set col_password='{password}' where col_email='{email}';
-                                   update tbl_reset_token set col_isused = TRUE where col_email_id='{email}' and col_reset_token='{reset_token}'
+                cursor.execute(f'''update gst_tbl_login_data set col_password='{password}' where col_email='{email}';
+                                   update gst_tbl_reset_token set col_isused = TRUE where col_email_id='{email}' and col_reset_token='{reset_token}'
                                ''')
                 return 'password changed'
             else:
@@ -413,24 +413,24 @@ def submit_request(name,type_,email,mobile,description,documents,token):
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                           CREATE TABLE IF NOT EXISTS tbl_transactions(col_id SERIAL PRIMARY KEY,col_amount INT, col_type TEXT, col_user_email TEXT,col_purpose TEXT,col_reference_id INT, col_created_at TIMESTAMPTZ default NOW());
-                            CREATE TABLE IF NOT EXISTS tbl_request(col_id SERIAL PRIMARY KEY, col_name TEXT,col_type TEXT ,col_email TEXT,col_mobile TEXT,col_description TEXT,col_status TEXT default 'Under Review',col_instruction TEXT DEFAULT '' ,col_created_at TIMESTAMPTZ default NOW(),col_assigned_ca_cs_id INT DEFAULT 0, col_agent_email_id TEXT,col_com_des text default 'none',col_approved_at TIMESTAMPTZ,col_completed_at TIMESTAMPTZ,col_rejected_at TIMESTAMPTZ,col_assigned_at TIMESTAMPTZ);
+                           CREATE TABLE IF NOT EXISTS gst_tbl_transactions(col_id SERIAL PRIMARY KEY,col_amount INT, col_type TEXT, col_user_email TEXT,col_purpose TEXT,col_reference_id INT, col_created_at TIMESTAMPTZ default NOW());
+                            CREATE TABLE IF NOT EXISTS gst_tbl_request(col_id SERIAL PRIMARY KEY, col_name TEXT,col_type TEXT ,col_email TEXT,col_mobile TEXT,col_description TEXT,col_status TEXT default 'Under Review',col_instruction TEXT DEFAULT '' ,col_created_at TIMESTAMPTZ default NOW(),col_assigned_ca_cs_id INT DEFAULT 0, col_agent_email_id TEXT,col_com_des text default 'none',col_approved_at TIMESTAMPTZ,col_completed_at TIMESTAMPTZ,col_rejected_at TIMESTAMPTZ,col_assigned_at TIMESTAMPTZ);
                             """)
             
             # Fetch price for the specific service type
-            cursor.execute("SELECT col_price FROM tbl_services WHERE col_name = %s", (type_,))
+            cursor.execute("SELECT col_price FROM gst_tbl_services WHERE col_name = %s", (type_,))
             service_row = cursor.fetchone()
             service_price = int(service_row[0]) if service_row else 500
 
             cursor.execute(f"""
-                           INSERT INTO tbl_request (col_name,col_type,col_email,col_mobile,col_description,col_agent_email_id)  VALUES (%s, %s, %s, %s, %s,%s) RETURNING col_id;
+                           INSERT INTO gst_tbl_request (col_name,col_type,col_email,col_mobile,col_description,col_agent_email_id)  VALUES (%s, %s, %s, %s, %s,%s) RETURNING col_id;
                             """,(name, type_, email, mobile, description,payload['email']) )
             new_id = cursor.fetchone()[0]
             print(new_id)
             # Record debit transaction
             cursor.execute(
                 """
-                INSERT INTO tbl_transactions(col_type, col_amount, col_user_email, col_purpose, col_reference_id) 
+                INSERT INTO gst_tbl_transactions(col_type, col_amount, col_user_email, col_purpose, col_reference_id) 
                 VALUES('debit', %s, %s, 'request_generation', %s);
                 """,
                 (service_price, payload['email'], str(new_id))
@@ -439,7 +439,7 @@ def submit_request(name,type_,email,mobile,description,documents,token):
             # Update agent balance
             cursor.execute(
                 """
-                UPDATE tbl_agent_data 
+                UPDATE gst_tbl_agent_data 
                 SET col_balance = CAST(col_balance AS INT) - %s 
                 WHERE col_email = %s;
                 """,
@@ -453,15 +453,15 @@ def submit_request(name,type_,email,mobile,description,documents,token):
                 print("Size:", len(byte_data))
             
                 cursor.execute(f"""
-                                CREATE TABLE IF NOT EXISTS tbl_documents (
+                                CREATE TABLE IF NOT EXISTS gst_tbl_documents (
                                                         col_id SERIAL PRIMARY KEY,
-                                                        col_request_id INT REFERENCES tbl_request(col_id) ON DELETE CASCADE, -- link to request
+                                                        col_request_id INT REFERENCES gst_tbl_request(col_id) ON DELETE CASCADE, -- link to request
                                                         col_filename TEXT,
                                                         col_content_type TEXT,
                                                         col_file_data BYTEA,
                                                         col_created_at TIMESTAMPTZ DEFAULT NOW()
                                                     );
-                               INSERT INTO tbl_documents (col_request_id,col_filename,col_content_type,col_file_data)  VALUES (%s, %s, %s, %s);
+                               INSERT INTO gst_tbl_documents (col_request_id,col_filename,col_content_type,col_file_data)  VALUES (%s, %s, %s, %s);
                                 """,(new_id,doc.name,doc.content_type,byte_data))
             
             print('submitted')
@@ -481,7 +481,7 @@ def get_request_document(request_id):
         
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                    select col_id ,col_filename, col_content_type from tbl_documents where col_request_id={request_id}
+                    select col_id ,col_filename, col_content_type from gst_tbl_documents where col_request_id={request_id}
                 """)
             data=cursor.fetchall()
             print(f'documents got {data}')
@@ -497,7 +497,7 @@ def get_request_data(token):
         email=payload['email']
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                    select col_login_type,col_username from tbl_login_data where col_email='{email}';
+                    select col_login_type,col_username from gst_tbl_login_data where col_email='{email}';
                 """)
             data=cursor.fetchone()
             print(data[0])
@@ -505,23 +505,23 @@ def get_request_data(token):
             if(data[0]=='Admin'):
                 cursor.execute("""
                         select request.*, agent_login.col_username, ca_cs.col_name 
-                        FROM tbl_request request 
-                        JOIN tbl_login_data agent_login ON request.col_agent_email_id = agent_login.col_email 
-                        LEFT JOIN tbl_ca_cs ca_cs ON request.col_assigned_ca_cs_id = ca_cs.col_id
+                        FROM gst_tbl_request request 
+                        JOIN gst_tbl_login_data agent_login ON request.col_agent_email_id = agent_login.col_email 
+                        LEFT JOIN gst_tbl_ca_cs ca_cs ON request.col_assigned_ca_cs_id = ca_cs.col_id
                         where request.col_status <> 'Cancelled' 
                         order by request.col_created_at DESC;
                     """)
             elif data[0] == 'CA/CS':
                 # For CA/CS, fetch the CA/CS ID first
-                cursor.execute(f"SELECT col_id FROM tbl_ca_cs WHERE col_email='{email}'")
+                cursor.execute(f"SELECT col_id FROM gst_tbl_ca_cs WHERE col_email='{email}'")
                 ca_cs_row = cursor.fetchone()
                 if ca_cs_row:
                     ca_cs_id = ca_cs_row[0]
                     cursor.execute(f"""
                         SELECT request.*, agent_login.col_username, ca_cs.col_name 
-                        FROM tbl_request request 
-                        JOIN tbl_login_data agent_login ON request.col_agent_email_id = agent_login.col_email 
-                        LEFT JOIN tbl_ca_cs ca_cs ON request.col_assigned_ca_cs_id = ca_cs.col_id
+                        FROM gst_tbl_request request 
+                        JOIN gst_tbl_login_data agent_login ON request.col_agent_email_id = agent_login.col_email 
+                        LEFT JOIN gst_tbl_ca_cs ca_cs ON request.col_assigned_ca_cs_id = ca_cs.col_id
                         WHERE request.col_assigned_ca_cs_id = {ca_cs_id} 
                         ORDER BY request.col_created_at DESC;
                     """)
@@ -530,13 +530,13 @@ def get_request_data(token):
             else:
                 cursor.execute(f"""
                         select request.*, agent_login.col_username, ca_cs.col_name 
-                        FROM tbl_request request 
-                        JOIN tbl_login_data agent_login ON request.col_agent_email_id = agent_login.col_email 
-                        LEFT JOIN tbl_ca_cs ca_cs ON request.col_assigned_ca_cs_id = ca_cs.col_id
+                        FROM gst_tbl_request request 
+                        JOIN gst_tbl_login_data agent_login ON request.col_agent_email_id = agent_login.col_email 
+                        LEFT JOIN gst_tbl_ca_cs ca_cs ON request.col_assigned_ca_cs_id = ca_cs.col_id
                         WHERE request.col_agent_email_id='{email}'  
                         order by request.col_created_at DESC;
                     """)
-                # select * from tbl_request where col_agent_email_id='{email}' order by col_created_at DESC
+                # select * from gst_tbl_request where col_agent_email_id='{email}' order by col_created_at DESC
             data=cursor.fetchall()
             return (data,'success')
     except jwt.ExpiredSignatureError:
@@ -557,7 +557,7 @@ def get_ca_cs_data(token, available_now=False):
         email=payload['email']
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                    select col_login_type from tbl_login_data where col_email='{email}';
+                    select col_login_type from gst_tbl_login_data where col_email='{email}';
                 """)
             data=cursor.fetchone()
             print(data[0])
@@ -572,15 +572,15 @@ def get_ca_cs_data(token, available_now=False):
 
                     # Ensure slot tables exist before querying
                     cursor.execute("""
-                        CREATE TABLE IF NOT EXISTS tbl_ca_cs_slots(
+                        CREATE TABLE IF NOT EXISTS gst_tbl_ca_cs_slots(
                             col_id SERIAL PRIMARY KEY,
-                            col_ca_cs_id INT REFERENCES tbl_ca_cs(col_id) ON DELETE CASCADE,
+                            col_ca_cs_id INT REFERENCES gst_tbl_ca_cs(col_id) ON DELETE CASCADE,
                             col_day TEXT,
                             col_slot_number INT
                         );
-                        CREATE TABLE IF NOT EXISTS tbl_ca_cs_special_slots(
+                        CREATE TABLE IF NOT EXISTS gst_tbl_ca_cs_special_slots(
                             col_id SERIAL PRIMARY KEY,
-                            col_ca_cs_id INT REFERENCES tbl_ca_cs(col_id) ON DELETE CASCADE,
+                            col_ca_cs_id INT REFERENCES gst_tbl_ca_cs(col_id) ON DELETE CASCADE,
                             col_date DATE,
                             col_slot_number INT
                         );
@@ -593,24 +593,24 @@ def get_ca_cs_data(token, available_now=False):
                     #      for today's weekday and current_slot.
                     cursor.execute("""
                         SELECT ca_cs.*
-                        FROM tbl_ca_cs ca_cs
+                        FROM gst_tbl_ca_cs ca_cs
                         WHERE
                             CASE
                                 -- Case 1: special slots exist for today
                                 WHEN EXISTS (
-                                    SELECT 1 FROM tbl_ca_cs_special_slots ss
+                                    SELECT 1 FROM gst_tbl_ca_cs_special_slots ss
                                     WHERE ss.col_ca_cs_id = ca_cs.col_id
                                       AND ss.col_date = %s
                                 )
                                 THEN EXISTS (
-                                    SELECT 1 FROM tbl_ca_cs_special_slots ss
+                                    SELECT 1 FROM gst_tbl_ca_cs_special_slots ss
                                     WHERE ss.col_ca_cs_id = ca_cs.col_id
                                       AND ss.col_date = %s
                                       AND ss.col_slot_number = %s
                                 )
                                 -- Case 2: no special slots → use general weekly schedule
                                 ELSE EXISTS (
-                                    SELECT 1 FROM tbl_ca_cs_slots s
+                                    SELECT 1 FROM gst_tbl_ca_cs_slots s
                                     WHERE s.col_ca_cs_id = ca_cs.col_id
                                       AND LOWER(TRIM(s.col_day)) = LOWER(%s)
                                       AND s.col_slot_number = %s
@@ -620,7 +620,7 @@ def get_ca_cs_data(token, available_now=False):
                     """, (ist_date, ist_date, current_slot, ist_weekday, current_slot))
                 else:
                     cursor.execute("""
-                            select * from tbl_ca_cs order by col_created_at DESC
+                            select * from gst_tbl_ca_cs order by col_created_at DESC
                         """)
                 data=cursor.fetchall()
                 return (data,'success')
@@ -644,7 +644,7 @@ def get_request_document_data(id):
         print('get_request_document_data')
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                    select col_content_type,col_file_data from tbl_documents where col_id={id}
+                    select col_content_type,col_file_data from gst_tbl_documents where col_id={id}
                 """)
             data= cursor.fetchone()
             print(data)
@@ -658,7 +658,7 @@ def ca_cs_registartion(data,docs):
     try:
         with connection.cursor() as cursor:
             cursor.execute("""
-                            CREATE TABLE IF NOT EXISTS tbl_ca_cs(
+                            CREATE TABLE IF NOT EXISTS gst_tbl_ca_cs(
                                 col_id SERIAL PRIMARY KEY, 
                                 col_name TEXT,
                                 col_role TEXT, 
@@ -672,28 +672,28 @@ def ca_cs_registartion(data,docs):
                             );
                             """)
             # Check if email already exists
-            cursor.execute("SELECT col_id FROM tbl_ca_cs WHERE col_email = %s", (data['email'],))
+            cursor.execute("SELECT col_id FROM gst_tbl_ca_cs WHERE col_email = %s", (data['email'],))
             if cursor.fetchone():
                 return 'email already exist'
 
             cursor.execute("""
-                           INSERT INTO tbl_ca_cs (col_name,col_role,col_specialization, col_email,col_mobile,col_regNumber,col_workingDays) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING col_id;
+                           INSERT INTO gst_tbl_ca_cs (col_name,col_role,col_specialization, col_email,col_mobile,col_regNumber,col_workingDays) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING col_id;
                             """, (data['name'], data['role'], data['specialization'], data['email'], data['mobile'], data['regNumber'], ['mon','tue','wed']))
 
             new_id = cursor.fetchone()[0]
             print(new_id)
 
-            # Create tbl_ca_cs_documents and fix any wrong FK constraint
+            # Create gst_tbl_ca_cs_documents and fix any wrong FK constraint
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS tbl_ca_cs_documents (
+                CREATE TABLE IF NOT EXISTS gst_tbl_ca_cs_documents (
                     col_id SERIAL PRIMARY KEY,
-                    col_ca_cs_id INT REFERENCES tbl_ca_cs(col_id) ON DELETE CASCADE,
+                    col_ca_cs_id INT REFERENCES gst_tbl_ca_cs(col_id) ON DELETE CASCADE,
                     col_filename TEXT,
                     col_content_type TEXT,
                     col_file_data BYTEA,
                     col_created_at TIMESTAMPTZ DEFAULT NOW()
                 );
-                -- Fix incorrect FK that may reference tbl_request instead of tbl_ca_cs
+                -- Fix incorrect FK that may reference gst_tbl_request instead of gst_tbl_ca_cs
                 DO $$
                 DECLARE
                     bad_constraint TEXT;
@@ -702,15 +702,15 @@ def ca_cs_registartion(data,docs):
                     FROM pg_constraint c
                     JOIN pg_class t ON c.conrelid = t.oid
                     JOIN pg_class r ON c.confrelid = r.oid
-                    WHERE t.relname = 'tbl_ca_cs_documents'
-                      AND r.relname = 'tbl_request'
+                    WHERE t.relname = 'gst_tbl_ca_cs_documents'
+                      AND r.relname = 'gst_tbl_request'
                       AND c.contype = 'f';
 
                     IF bad_constraint IS NOT NULL THEN
-                        EXECUTE 'ALTER TABLE tbl_ca_cs_documents DROP CONSTRAINT ' || quote_ident(bad_constraint);
-                        ALTER TABLE tbl_ca_cs_documents
-                            ADD CONSTRAINT tbl_ca_cs_documents_col_ca_cs_id_fkey
-                            FOREIGN KEY (col_ca_cs_id) REFERENCES tbl_ca_cs(col_id) ON DELETE CASCADE;
+                        EXECUTE 'ALTER TABLE gst_tbl_ca_cs_documents DROP CONSTRAINT ' || quote_ident(bad_constraint);
+                        ALTER TABLE gst_tbl_ca_cs_documents
+                            ADD CONSTRAINT gst_tbl_ca_cs_documents_col_ca_cs_id_fkey
+                            FOREIGN KEY (col_ca_cs_id) REFERENCES gst_tbl_ca_cs(col_id) ON DELETE CASCADE;
                     END IF;
                 END $$;
             """)
@@ -722,7 +722,7 @@ def ca_cs_registartion(data,docs):
                 print("Size:", len(byte_data))
 
                 cursor.execute("""
-                    INSERT INTO tbl_ca_cs_documents (col_ca_cs_id, col_filename, col_content_type, col_file_data)
+                    INSERT INTO gst_tbl_ca_cs_documents (col_ca_cs_id, col_filename, col_content_type, col_file_data)
                     VALUES (%s, %s, %s, %s);
                 """, (new_id, doc.name, doc.content_type, byte_data))
 
@@ -732,10 +732,10 @@ def ca_cs_registartion(data,docs):
             temp_password = data['mobile']  # Use mobile as initial password
             login_type = 'CA/CS'  # Unified login type
             cursor.execute("""
-                create table IF NOT EXISTS tbl_login_data(col_username TEXT, col_email TEXT UNIQUE, col_password TEXT, col_login_type TEXT DEFAULT 'Agent');
+                create table IF NOT EXISTS gst_tbl_login_data(col_username TEXT, col_email TEXT UNIQUE, col_password TEXT, col_login_type TEXT DEFAULT 'Agent');
             """)
             cursor.execute("""
-                INSERT INTO tbl_login_data (col_username, col_email, col_password, col_login_type)
+                INSERT INTO gst_tbl_login_data (col_username, col_email, col_password, col_login_type)
                 VALUES (%s, %s, %s, %s)
                 ON CONFLICT (col_email) DO UPDATE SET col_login_type = EXCLUDED.col_login_type;
             """, (data['name'], data['email'], temp_password, login_type))
@@ -795,7 +795,7 @@ def update_ca_cs(ca_cs_id, data, certificate=None, id_proof=None):
         with connection.cursor() as cursor:
             # Update main record
             cursor.execute("""
-                UPDATE tbl_ca_cs 
+                UPDATE gst_tbl_ca_cs 
                 SET col_name = %s, col_role = %s, col_specialization = %s, 
                     col_email = %s, col_mobile = %s, col_regNumber = %s
                 WHERE col_id = %s;
@@ -806,7 +806,7 @@ def update_ca_cs(ca_cs_id, data, certificate=None, id_proof=None):
 
             
             # Fetch existing documents to update them by index
-            cursor.execute(f"SELECT col_id FROM tbl_ca_cs_documents WHERE col_ca_cs_id = {ca_cs_id} ORDER BY col_id ASC")
+            cursor.execute(f"SELECT col_id FROM gst_tbl_ca_cs_documents WHERE col_ca_cs_id = {ca_cs_id} ORDER BY col_id ASC")
             docs_ids = cursor.fetchall()
 
             # Update Certificate (Index 0)
@@ -814,13 +814,13 @@ def update_ca_cs(ca_cs_id, data, certificate=None, id_proof=None):
                 byte_data = certificate.read()
                 if len(docs_ids) > 0:
                     cursor.execute("""
-                        UPDATE tbl_ca_cs_documents 
+                        UPDATE gst_tbl_ca_cs_documents 
                         SET col_filename = %s, col_content_type = %s, col_file_data = %s 
                         WHERE col_id = %s;
                     """, (certificate.name, certificate.content_type, byte_data, docs_ids[0][0]))
                 else:
                     cursor.execute("""
-                        INSERT INTO tbl_ca_cs_documents (col_ca_cs_id, col_filename, col_content_type, col_file_data) 
+                        INSERT INTO gst_tbl_ca_cs_documents (col_ca_cs_id, col_filename, col_content_type, col_file_data) 
                         VALUES (%s, %s, %s, %s);
                     """, (ca_cs_id, certificate.name, certificate.content_type, byte_data))
 
@@ -829,13 +829,13 @@ def update_ca_cs(ca_cs_id, data, certificate=None, id_proof=None):
                 byte_data = id_proof.read()
                 if len(docs_ids) > 1:
                     cursor.execute("""
-                        UPDATE tbl_ca_cs_documents 
+                        UPDATE gst_tbl_ca_cs_documents 
                         SET col_filename = %s, col_content_type = %s, col_file_data = %s 
                         WHERE col_id = %s;
                     """, (id_proof.name, id_proof.content_type, byte_data, docs_ids[1][0]))
                 else:
                     cursor.execute("""
-                        INSERT INTO tbl_ca_cs_documents (col_ca_cs_id, col_filename, col_content_type, col_file_data) 
+                        INSERT INTO gst_tbl_ca_cs_documents (col_ca_cs_id, col_filename, col_content_type, col_file_data) 
                         VALUES (%s, %s, %s, %s);
                     """, (ca_cs_id, id_proof.name, id_proof.content_type, byte_data))
 
@@ -906,7 +906,7 @@ def update_request_status(requestId,requestStatus,requestInstruction,attachment=
             #get old status
             cursor.execute(
                 f"""
-                    SELECT col_status from tbl_request where col_id = %s;
+                    SELECT col_status from gst_tbl_request where col_id = %s;
                  """ ,(requestId,)  
             )
             row=cursor.fetchone()
@@ -935,18 +935,22 @@ def update_request_status(requestId,requestStatus,requestInstruction,attachment=
                 case _:
                     return "invalid status"
                 
-            # print(f"""
-            #         UPDATE tbl_request SET col_status= %s, {status_des_col} = %s, {status_time_col}= NOW() where col_id = %s RETURNING col_status;
-            #         SELECT col_agent_email_id,col_id,col_name from tbl_request where col_id = %s;
-            #      """ ,(requestStatus,requestInstruction,requestId,requestId) )
+            cursor.execute(
+                f"""
+                    UPDATE gst_tbl_request SET col_status= %s, {status_des_col} = %s, {status_time_col}= NOW() where col_id = %s;
+                 """ ,(requestStatus,requestInstruction,requestId)  
+            )
             
             cursor.execute(
                 f"""
-                    UPDATE tbl_request SET col_status= %s, {status_des_col} = %s, {status_time_col}= NOW() where col_id = %s RETURNING col_status;
-                    SELECT col_agent_email_id,col_id,col_name from tbl_request where col_id = %s;
-                 """ ,(requestStatus,requestInstruction,requestId,requestId)  
+                    SELECT col_agent_email_id,col_id,col_name from gst_tbl_request where col_id = %s;
+                 """ ,(requestId,)  
             )
             row=cursor.fetchone()
+            if not row:
+                print(f"Request {requestId} not found after update")
+                return 'error'
+                
             agent_email=row[0]
             request_id=row[1]
             reques_customer_name=row[2]
@@ -954,7 +958,7 @@ def update_request_status(requestId,requestStatus,requestInstruction,attachment=
 
             cursor.execute(
                 f"""
-                    SELECT col_username from tbl_login_data where col_email= %s;
+                    SELECT col_username from gst_tbl_login_data where col_email= %s;
                  """ ,(agent_email,)  
             )
             row=cursor.fetchone()
@@ -972,7 +976,7 @@ def update_request_status(requestId,requestStatus,requestInstruction,attachment=
 #     try:
 #         with connection.cursor() as cursor:
 #             cursor.execute("""
-#                     select * from tbl_ca_cs;
+#                     select * from gst_tbl_ca_cs;
 #                 """)
 #             data=cursor.fetchall()
 #             print(data)
@@ -988,7 +992,7 @@ def assign_ca_cs(ca_cs_id, requestId):
         with connection.cursor() as cursor:
             # First, check the current status of the request
             cursor.execute(
-                "SELECT col_status FROM tbl_request WHERE col_id = %s;",
+                "SELECT col_status FROM gst_tbl_request WHERE col_id = %s;",
                 (requestId,)
             )
             row = cursor.fetchone()
@@ -1002,19 +1006,19 @@ def assign_ca_cs(ca_cs_id, requestId):
 
             # Assign the CA/CS to the request
             cursor.execute(
-                "UPDATE tbl_request SET col_assigned_ca_cs_id = %s, col_status = 'Assigned', col_assigned_at = NOW() WHERE col_id = %s;",
+                "UPDATE gst_tbl_request SET col_assigned_ca_cs_id = %s, col_status = 'Assigned', col_assigned_at = NOW() WHERE col_id = %s;",
                 (ca_cs_id, requestId)
             )
             
             # Update the CA/CS record with the assigned request
             cursor.execute(
-                "UPDATE tbl_ca_cs SET col_assigned_request = array_append(col_assigned_request, %s) WHERE col_id = %s;",
+                "UPDATE gst_tbl_ca_cs SET col_assigned_request = array_append(col_assigned_request, %s) WHERE col_id = %s;",
                 (requestId, ca_cs_id)
             )
             
             # Fetch request details for the email notification
             cursor.execute(
-                "SELECT col_agent_email_id, col_id, col_name FROM tbl_request WHERE col_id = %s;",
+                "SELECT col_agent_email_id, col_id, col_name FROM gst_tbl_request WHERE col_id = %s;",
                 (requestId,)
             )
             row = cursor.fetchone()
@@ -1027,7 +1031,7 @@ def assign_ca_cs(ca_cs_id, requestId):
             request_customer_name = row[2]
             cursor.execute(
                 f"""
-                    SELECT col_username from tbl_login_data where col_email= %s;
+                    SELECT col_username from gst_tbl_login_data where col_email= %s;
                  """ ,(agent_email,)  
             )
             row = cursor.fetchone()
@@ -1044,7 +1048,7 @@ def get_verified_request_data():
     try:
         with connection.cursor() as cursor:
             cursor.execute("""
-                    select * from tbl_request where col_status = 'Verified' order by col_created_at DESC
+                    select * from gst_tbl_request where col_status = 'Verified' order by col_created_at DESC
                 """)
             data=cursor.fetchall()
             print(data)
@@ -1059,10 +1063,10 @@ def submit_payment_request(name,amount,paymentMethod,bankName,accountNumber,ifsc
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                            CREATE TABLE IF NOT EXISTS tbl_payment_request(col_id SERIAL PRIMARY KEY, col_name TEXT,col_amount TEXT,col_payment_method TEXT ,col_bank_name TEXT,col_account_number TEXT,col_ifsc_code TEXT, col_upi_id TEXT,col_status TEXT default 'Pending',col_instruction TEXT DEFAULT '' ,col_created_at TIMESTAMPTZ default NOW(),col_agent_email_id TEXT);
+                            CREATE TABLE IF NOT EXISTS gst_tbl_payment_request(col_id SERIAL PRIMARY KEY, col_name TEXT,col_amount TEXT,col_payment_method TEXT ,col_bank_name TEXT,col_account_number TEXT,col_ifsc_code TEXT, col_upi_id TEXT,col_status TEXT default 'Pending',col_instruction TEXT DEFAULT '' ,col_created_at TIMESTAMPTZ default NOW(),col_agent_email_id TEXT);
                             """)
             cursor.execute(f"""
-                           INSERT INTO tbl_payment_request (col_name,col_amount,col_payment_method,col_bank_name,col_account_number,col_ifsc_code,col_upi_id,col_agent_email_id)  VALUES (%s,%s, %s, %s, %s, %s,%s,%s) RETURNING col_id;
+                           INSERT INTO gst_tbl_payment_request (col_name,col_amount,col_payment_method,col_bank_name,col_account_number,col_ifsc_code,col_upi_id,col_agent_email_id)  VALUES (%s,%s, %s, %s, %s, %s,%s,%s) RETURNING col_id;
                             """,(name,amount, paymentMethod, bankName, accountNumber, ifscCode,upiId,payload['email']) )
             new_id = cursor.fetchone()[0]
             print(new_id)
@@ -1074,15 +1078,15 @@ def submit_payment_request(name,amount,paymentMethod,bankName,accountNumber,ifsc
                 print("Size:", len(byte_data))
             
                 cursor.execute(f"""
-                                CREATE TABLE IF NOT EXISTS tbl_payment_documents (
+                                CREATE TABLE IF NOT EXISTS gst_tbl_payment_documents (
                                                         col_id SERIAL PRIMARY KEY,
-                                                        col_request_id INT REFERENCES tbl_payment_request(col_id) ON DELETE CASCADE, -- link to request
+                                                        col_request_id INT REFERENCES gst_tbl_payment_request(col_id) ON DELETE CASCADE, -- link to request
                                                         col_filename TEXT,
                                                         col_content_type TEXT,
                                                         col_file_data BYTEA,
                                                         col_created_at TIMESTAMPTZ DEFAULT NOW()
                                                     );
-                               INSERT INTO tbl_payment_documents (col_request_id,col_filename,col_content_type,col_file_data)  VALUES (%s, %s, %s, %s);
+                               INSERT INTO gst_tbl_payment_documents (col_request_id,col_filename,col_content_type,col_file_data)  VALUES (%s, %s, %s, %s);
                                 """,(new_id,doc.name,doc.content_type,byte_data))
             
             print('submitted')
@@ -1104,17 +1108,17 @@ def get_payment_request_data(token):
         email=payload['email']
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                    select col_login_type from tbl_login_data where col_email='{email}';
+                    select col_login_type from gst_tbl_login_data where col_email='{email}';
                 """)
             data=cursor.fetchone()
             print(data[0])
             if(data[0]=='Admin'):
                 cursor.execute("""
-                        select * from tbl_payment_request order by col_created_at DESC
+                        select * from gst_tbl_payment_request order by col_created_at DESC
                     """)
             else:
                 cursor.execute(f"""
-                        select * from tbl_payment_request where col_agent_email_id='{email}' order by col_created_at DESC
+                        select * from gst_tbl_payment_request where col_agent_email_id='{email}' order by col_created_at DESC
                     """)
             
             data=cursor.fetchall()
@@ -1133,7 +1137,7 @@ def get_payment_request_data(token):
 #         print('get_payment_request_document_data')
 #         with connection.cursor() as cursor:
 #             cursor.execute(f"""
-#                     select col_content_type,col_file_data from tbl_payment_documents where col_id={id}
+#                     select col_content_type,col_file_data from gst_tbl_payment_documents where col_id={id}
 #                 """)
 #             data= cursor.fetchone()
 #             print(data)
@@ -1147,12 +1151,12 @@ def get_payment_request_document(request_id):
     try:
         with connection.cursor() as cursor:
             # cursor.execute("""
-            #         select col_id from tbl_request order by col_created_at DESC
+            #         select col_id from gst_tbl_request order by col_created_at DESC
             #     """)
             # request_id=cursor.fetchone()[0]
             # print(request_id)
             cursor.execute(f"""
-                    select col_id ,col_filename, col_content_type from tbl_payment_documents where col_request_id={request_id}
+                    select col_id ,col_filename, col_content_type from gst_tbl_payment_documents where col_request_id={request_id}
                 """)
             data=cursor.fetchall()
             print(f'documents got {data}')
@@ -1167,7 +1171,7 @@ def get_payment_request_document_data(id):
         print('get_payment_request_document_data')
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                    select col_content_type,col_file_data from tbl_payment_documents where col_id={id}
+                    select col_content_type,col_file_data from gst_tbl_payment_documents where col_id={id}
                 """)
             data= cursor.fetchone()
             print(data)
@@ -1182,7 +1186,7 @@ def update_payment_request_status(paymentRequestId, requestInstruction):
         with connection.cursor() as cursor:
             # 1. Fetch payment request details
             cursor.execute(
-                "SELECT col_agent_email_id, col_name, col_amount FROM tbl_payment_request WHERE col_id = %s;",
+                "SELECT col_agent_email_id, col_name, col_amount FROM gst_tbl_payment_request WHERE col_id = %s;",
                 (paymentRequestId,)
             )
             row = cursor.fetchone()
@@ -1197,7 +1201,7 @@ def update_payment_request_status(paymentRequestId, requestInstruction):
             
             # 2. Ensure transactions table exists
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS tbl_transactions(
+                CREATE TABLE IF NOT EXISTS gst_tbl_transactions(
                     col_id SERIAL PRIMARY KEY,
                     col_amount INT, 
                     col_type TEXT, 
@@ -1211,7 +1215,7 @@ def update_payment_request_status(paymentRequestId, requestInstruction):
             # 3. Record transaction
             cursor.execute(
                 """
-                INSERT INTO tbl_transactions(col_type, col_amount, col_user_email, col_purpose, col_reference_id) 
+                INSERT INTO gst_tbl_transactions(col_type, col_amount, col_user_email, col_purpose, col_reference_id) 
                 VALUES('credit', %s, %s, 'manual_payment_verification', %s);
                 """,
                 (int(amount), agent_email, str(paymentRequestId))
@@ -1220,7 +1224,7 @@ def update_payment_request_status(paymentRequestId, requestInstruction):
             # 4. Update agent balance
             cursor.execute(
                 """
-                UPDATE tbl_agent_data 
+                UPDATE gst_tbl_agent_data 
                 SET col_balance = CAST(col_balance AS INT) + %s 
                 WHERE col_email = %s;
                 """,
@@ -1230,7 +1234,7 @@ def update_payment_request_status(paymentRequestId, requestInstruction):
             # 5. Update payment request status (missing in original code shown)
             cursor.execute(
                 """
-                UPDATE tbl_payment_request 
+                UPDATE gst_tbl_payment_request 
                 SET col_status = 'Approved', col_instruction = %s 
                 WHERE col_id = %s;
                 """,
@@ -1239,7 +1243,7 @@ def update_payment_request_status(paymentRequestId, requestInstruction):
 
             # 6. Fetch agent username and send status update email
             cursor.execute(
-                "SELECT col_username FROM tbl_login_data WHERE col_email = %s;",
+                "SELECT col_username FROM gst_tbl_login_data WHERE col_email = %s;",
                 (agent_email,)
             )
             username_row = cursor.fetchone()
@@ -1269,7 +1273,7 @@ def reject_payment_request(paymentRequestId, rejectReason):
         with connection.cursor() as cursor:
             # 1. Fetch payment request details
             cursor.execute(
-                "SELECT col_agent_email_id, col_name, col_amount, col_status FROM tbl_payment_request WHERE col_id = %s;",
+                "SELECT col_agent_email_id, col_name, col_amount, col_status FROM gst_tbl_payment_request WHERE col_id = %s;",
                 (paymentRequestId,)
             )
             row = cursor.fetchone()
@@ -1287,7 +1291,7 @@ def reject_payment_request(paymentRequestId, rejectReason):
             # 2. Update payment request status to Rejected
             cursor.execute(
                 """
-                UPDATE tbl_payment_request
+                UPDATE gst_tbl_payment_request
                 SET col_status = 'Rejected', col_instruction = %s
                 WHERE col_id = %s;
                 """,
@@ -1296,7 +1300,7 @@ def reject_payment_request(paymentRequestId, rejectReason):
 
             # 3. Fetch agent username and send email
             cursor.execute(
-                "SELECT col_username FROM tbl_login_data WHERE col_email = %s;",
+                "SELECT col_username FROM gst_tbl_login_data WHERE col_email = %s;",
                 (agent_email,)
             )
             username_row = cursor.fetchone()
@@ -1326,7 +1330,7 @@ def get_ca_cs_document(ca_cs_id):
         
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                    select col_id ,col_filename, col_content_type from tbl_ca_cs_documents where col_ca_cs_id={ca_cs_id}
+                    select col_id ,col_filename, col_content_type from gst_tbl_ca_cs_documents where col_ca_cs_id={ca_cs_id}
                 """)
             data=cursor.fetchall()
             print(f'documents got {data}')
@@ -1341,7 +1345,7 @@ def get_ca_cs_document_data(id):
         print('get_ca_cs_document_data')
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                    select col_content_type,col_file_data from tbl_ca_cs_documents where col_id={id}
+                    select col_content_type,col_file_data from gst_tbl_ca_cs_documents where col_id={id}
                 """)
             data= cursor.fetchone()
             print(data)
@@ -1356,7 +1360,7 @@ def get_agent_balance(token):
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                        select col_balance from tbl_agent_data where col_email = '{payload['email']}'
+                        select col_balance from gst_tbl_agent_data where col_email = '{payload['email']}'
                         """)
             balance=cursor.fetchone()
             return 'success', balance[0]
@@ -1376,17 +1380,17 @@ def get_transaction_data(token):
         email=payload['email']
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                    select col_login_type from tbl_login_data where col_email='{email}';
+                    select col_login_type from gst_tbl_login_data where col_email='{email}';
                 """)
             data=cursor.fetchone()
             print(data[0])
             if(data[0]=='Admin'):
                 cursor.execute("""
-                        select * from tbl_transactions order by col_created_at DESC
+                        select * from gst_tbl_transactions order by col_created_at DESC
                     """)
             else:
                 cursor.execute(f"""
-                        select * from tbl_transactions where col_user_email='{email}' order by col_created_at DESC
+                        select * from gst_tbl_transactions where col_user_email='{email}' order by col_created_at DESC
                     """)
             
             data=cursor.fetchall()
@@ -1421,18 +1425,18 @@ def complete_request(request_id,description,documents,token):
                 print("Size:", len(byte_data))
             
                 cursor.execute(f"""
-                                CREATE TABLE IF NOT EXISTS tbl_completion_documents(
+                                CREATE TABLE IF NOT EXISTS gst_tbl_completion_documents(
                                                         col_id SERIAL PRIMARY KEY,
-                                                        col_request_id INT REFERENCES tbl_request(col_id) ON DELETE CASCADE, -- link to request
+                                                        col_request_id INT REFERENCES gst_tbl_request(col_id) ON DELETE CASCADE, -- link to request
                                                         col_filename TEXT,
                                                         col_content_type TEXT,
                                                         col_file_data BYTEA,
                                                         col_created_at TIMESTAMPTZ DEFAULT NOW()
                                                     );
-                               INSERT INTO tbl_completion_documents (col_request_id,col_filename,col_content_type,col_file_data)  VALUES (%s, %s, %s, %s);
+                               INSERT INTO gst_tbl_completion_documents (col_request_id,col_filename,col_content_type,col_file_data)  VALUES (%s, %s, %s, %s);
                                 """,(request_id,doc.name,doc.content_type,byte_data))
             cursor.execute(
-                    f""" SELECT col_agent_email_id,col_id,col_name from tbl_request where col_id = {request_id};"""
+                    f""" SELECT col_agent_email_id,col_id,col_name from gst_tbl_request where col_id = {request_id};"""
                     )
             row=cursor.fetchone()
             agent_email=row[0]
@@ -1440,7 +1444,7 @@ def complete_request(request_id,description,documents,token):
             reques_customer_name=row[2]
             cursor.execute(
                 f"""
-                    SELECT col_username from tbl_login_data where col_email= %s;
+                    SELECT col_username from gst_tbl_login_data where col_email= %s;
                  """ ,(agent_email,)  
             )
             row=cursor.fetchone()
@@ -1463,7 +1467,7 @@ def get_request_completion_document(request_id):
         
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                    select col_id ,col_filename, col_content_type from tbl_completion_documents where col_request_id={request_id}
+                    select col_id ,col_filename, col_content_type from gst_tbl_completion_documents where col_request_id={request_id}
                 """)
             data=cursor.fetchall()
             print(f'documents got {data}')
@@ -1477,7 +1481,7 @@ def get_request_completion_document_data(id):
         print('get_request_document_data')
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                    select col_content_type,col_file_data from tbl_completion_documents where col_id={id}
+                    select col_content_type,col_file_data from gst_tbl_completion_documents where col_id={id}
                 """)
             data= cursor.fetchone()
             print(data)
@@ -1492,13 +1496,13 @@ def get_agent_data_list(token):
         email=payload['email']
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                    select col_login_type from tbl_login_data where col_email='{email}';
+                    select col_login_type from gst_tbl_login_data where col_email='{email}';
                 """)
             data=cursor.fetchone()
             print(data[0])
             if(data[0]=='Admin'):
                 cursor.execute("""
-                        select a.col_username,a.col_email,b.col_balance from tbl_login_data as a join tbl_agent_data as b on a.col_email=b.col_email;
+                        select a.col_username,a.col_email,b.col_balance from gst_tbl_login_data as a join gst_tbl_agent_data as b on a.col_email=b.col_email;
                     """)
                 data=cursor.fetchall()
                 print(data)
@@ -1518,13 +1522,13 @@ def get_services():
     try:
         with connection.cursor() as cursor:
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS tbl_services(
+                CREATE TABLE IF NOT EXISTS gst_tbl_services(
                     col_id SERIAL PRIMARY KEY,
                     col_name TEXT,
                     col_price TEXT,
                     col_created_at TIMESTAMPTZ DEFAULT NOW()
                 );
-                SELECT col_id, col_name, col_price FROM tbl_services ORDER BY col_created_at DESC;
+                SELECT col_id, col_name, col_price FROM gst_tbl_services ORDER BY col_created_at DESC;
             """)
             data = cursor.fetchall()
             return (data, "success")
@@ -1536,7 +1540,7 @@ def add_service(name, price):
     try:
         with connection.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO tbl_services (col_name, col_price) VALUES (%s, %s);
+                INSERT INTO gst_tbl_services (col_name, col_price) VALUES (%s, %s);
             """, (name, price))
             return "success"
     except Exception as e:
@@ -1547,7 +1551,7 @@ def update_service(service_id, name, price):
     try:
         with connection.cursor() as cursor:
             cursor.execute("""
-                UPDATE tbl_services SET col_name = %s, col_price = %s WHERE col_id = %s;
+                UPDATE gst_tbl_services SET col_name = %s, col_price = %s WHERE col_id = %s;
             """, (name, price, service_id))
             return "success"
     except Exception as e:
@@ -1558,7 +1562,7 @@ def delete_service(service_id):
     try:
         with connection.cursor() as cursor:
             cursor.execute("""
-                DELETE FROM tbl_services WHERE col_id = %s;
+                DELETE FROM gst_tbl_services WHERE col_id = %s;
             """, (service_id,))
             return "success"
     except Exception as e:
@@ -1569,16 +1573,16 @@ def get_ca_cs_slots(ca_cs_id):
     try:
         with connection.cursor() as cursor:
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS tbl_ca_cs_slots(
+                CREATE TABLE IF NOT EXISTS gst_tbl_ca_cs_slots(
                     col_id SERIAL PRIMARY KEY,
-                    col_ca_cs_id INT REFERENCES tbl_ca_cs(col_id) ON DELETE CASCADE,
+                    col_ca_cs_id INT REFERENCES gst_tbl_ca_cs(col_id) ON DELETE CASCADE,
                     col_day TEXT,
                     col_slot_number INT
                 );
             """)
             cursor.execute("""
                 SELECT col_day, col_slot_number
-                FROM tbl_ca_cs_slots
+                FROM gst_tbl_ca_cs_slots
                 WHERE col_ca_cs_id = %s
                 ORDER BY col_day, col_slot_number;
             """, (ca_cs_id,))
@@ -1592,10 +1596,10 @@ def update_ca_cs_slots(ca_cs_id, slots):
     # slots: list of { 'day': 'Monday', 'slot_number': 5 }
     try:
         with connection.cursor() as cursor:
-            cursor.execute("DELETE FROM tbl_ca_cs_slots WHERE col_ca_cs_id = %s", (ca_cs_id,))
+            cursor.execute("DELETE FROM gst_tbl_ca_cs_slots WHERE col_ca_cs_id = %s", (ca_cs_id,))
             for slot in slots:
                 cursor.execute("""
-                    INSERT INTO tbl_ca_cs_slots (col_ca_cs_id, col_day, col_slot_number)
+                    INSERT INTO gst_tbl_ca_cs_slots (col_ca_cs_id, col_day, col_slot_number)
                     VALUES (%s, %s, %s);
                 """, (ca_cs_id, slot['day'], slot['slot_number']))
             return "success"
@@ -1607,16 +1611,16 @@ def get_ca_cs_special_slots(ca_cs_id):
     try:
         with connection.cursor() as cursor:
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS tbl_ca_cs_special_slots(
+                CREATE TABLE IF NOT EXISTS gst_tbl_ca_cs_special_slots(
                     col_id SERIAL PRIMARY KEY,
-                    col_ca_cs_id INT REFERENCES tbl_ca_cs(col_id) ON DELETE CASCADE,
+                    col_ca_cs_id INT REFERENCES gst_tbl_ca_cs(col_id) ON DELETE CASCADE,
                     col_date DATE,
                     col_slot_number INT
                 );
             """)
             cursor.execute("""
                 SELECT col_date, col_slot_number
-                FROM tbl_ca_cs_special_slots
+                FROM gst_tbl_ca_cs_special_slots
                 WHERE col_ca_cs_id = %s
                 ORDER BY col_date DESC, col_slot_number;
             """, (ca_cs_id,))
@@ -1630,10 +1634,10 @@ def update_ca_cs_special_slots(ca_cs_id, date, slots):
     # slots: list of slot numbers e.g. [5, 6, 7]
     try:
         with connection.cursor() as cursor:
-            cursor.execute("DELETE FROM tbl_ca_cs_special_slots WHERE col_ca_cs_id = %s AND col_date = %s", (ca_cs_id, date))
+            cursor.execute("DELETE FROM gst_tbl_ca_cs_special_slots WHERE col_ca_cs_id = %s AND col_date = %s", (ca_cs_id, date))
             for slot_number in slots:
                 cursor.execute("""
-                    INSERT INTO tbl_ca_cs_special_slots (col_ca_cs_id, col_date, col_slot_number)
+                    INSERT INTO gst_tbl_ca_cs_special_slots (col_ca_cs_id, col_date, col_slot_number)
                     VALUES (%s, %s, %s);
                 """, (ca_cs_id, date, slot_number))
             return "success"
@@ -1646,7 +1650,7 @@ def get_my_cacs_data(token):
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         email = payload['email']
         with connection.cursor() as cursor:
-            cursor.execute(f"SELECT * FROM tbl_ca_cs WHERE col_email='{email}'")
+            cursor.execute(f"SELECT * FROM gst_tbl_ca_cs WHERE col_email='{email}'")
             row = cursor.fetchone()
             if row:
                 return (row, 'success')
