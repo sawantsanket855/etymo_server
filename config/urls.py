@@ -64,5 +64,9 @@ urlpatterns = [
     path('razorpay_payment_data/',razorpay_payment_data_api),
     path('razorpay_create_request/',razorpay_create_request_api),
     path('get_my_cacs_data/', get_my_cacs_data_api),
-
+    path('admin_pay_amount/', admin_pay_amount_api),
+    path('update_admin_bank_details/', update_admin_bank_details_api),
+    path('get_admin_bank_details/', get_admin_bank_details_api),
+    path('update_cacs_bank_details/', update_cacs_bank_details_api),
+    path('get_cacs_bank_details/', get_cacs_bank_details_api),
 ]

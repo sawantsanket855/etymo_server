@@ -319,6 +319,22 @@ def reject_payment_request_api(request):
         return JsonResponse({'message': 'server error'})
 
 
+@api_view(['POST'])
+def admin_pay_amount_api(request):
+    try:
+        data = request.data
+        print('admin_pay_amount_api', data)
+        response = admin_pay_amount(
+            data['requestId'],
+            data['amount'],
+            data['paymentMethod'],
+            data.get('transactionId', ''),
+            data.get('notes', '')
+        )
+        return JsonResponse({'message': response})
+    except Exception as e:
+        print('error in admin_pay_amount_api', e)
+        return JsonResponse({'message': 'server error'})
 
 @api_view(['POST'])    
 def get_ca_cs_document_api(request):
@@ -534,4 +550,60 @@ def get_my_cacs_data_api(request):
         return JsonResponse({'result': result, 'message': message})
     except Exception as e:
         print(f"API Error in get_my_cacs_data_api: {e}")
+        return JsonResponse({'result': None, 'message': 'error'})
+
+@api_view(['POST'])
+def update_admin_bank_details_api(request):
+    try:
+        data = request.data
+        message = update_admin_bank_details(
+            data.get('bankName', ''),
+            data.get('accountName', ''),
+            data.get('accountNumber', ''),
+            data.get('ifscCode', ''),
+            data.get('upiId', ''),
+            data.get('token', '')
+        )
+        return JsonResponse({'message': message})
+    except Exception as e:
+        print(f"API Error in update_admin_bank_details_api: {e}")
+        return JsonResponse({'message': 'error'})
+
+@api_view(['GET'])
+def get_admin_bank_details_api(request):
+    try:
+        result, message = get_admin_bank_details()
+        return JsonResponse({'result': result, 'message': message})
+    except Exception as e:
+        print(f"API Error in get_admin_bank_details_api: {e}")
+        return JsonResponse({'result': None, 'message': 'error'})
+
+@api_view(['POST'])
+def update_cacs_bank_details_api(request):
+    try:
+        data = request.data
+        message = update_cacs_bank_details(
+            data.get('bankName', ''),
+            data.get('accountName', ''),
+            data.get('accountNumber', ''),
+            data.get('ifscCode', ''),
+            data.get('upiId', ''),
+            data.get('token', '')
+        )
+        return JsonResponse({'message': message})
+    except Exception as e:
+        print(f"API Error in update_cacs_bank_details_api: {e}")
+        return JsonResponse({'message': 'error'})
+
+@api_view(['POST'])
+def get_cacs_bank_details_api(request):
+    try:
+        data = request.data
+        result, message = get_cacs_bank_details(
+            cacs_id=data.get('cacs_id'),
+            token=data.get('token')
+        )
+        return JsonResponse({'result': result, 'message': message})
+    except Exception as e:
+        print(f"API Error in get_cacs_bank_details_api: {e}")
         return JsonResponse({'result': None, 'message': 'error'})

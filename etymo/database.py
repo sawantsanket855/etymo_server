@@ -4,11 +4,22 @@ from django.core.mail import EmailMultiAlternatives
 import random
 from datetime import datetime, timezone
 import secrets
+import psycopg2
 from psycopg2 import Binary
 from django.conf import settings
 from datetime import datetime, timedelta
 
 from etymo.email import sendMail
+
+db_config = settings.DATABASES['default']
+if 'OPTIONS' in db_config:
+    db_config = {
+        'dbname': db_config['NAME'],
+        'user': db_config['USER'],
+        'password': db_config['PASSWORD'],
+        'host': db_config['HOST'],
+        'port': db_config['PORT'],
+    }
 
 def get_base_template(title, body):
     """Returns a unified, professional HTML template for emails."""
@@ -175,6 +186,15 @@ def ensure_all_tables():
                     col_content_type TEXT,
                     col_file_data BYTEA,
                     col_created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+                CREATE TABLE IF NOT EXISTS gst_tbl_cacs_bank_details (
+                    col_cacs_id INT PRIMARY KEY REFERENCES gst_tbl_ca_cs(col_id) ON DELETE CASCADE,
+                    col_bank_name TEXT,
+                    col_account_name TEXT,
+                    col_account_number TEXT,
+                    col_ifsc_code TEXT,
+                    col_upi_id TEXT,
+                    col_updated_at TIMESTAMPTZ DEFAULT NOW()
                 );
             """)
 
@@ -1324,6 +1344,110 @@ def reject_payment_request(paymentRequestId, rejectReason):
         return 'server error'
 
 
+def admin_pay_amount(requestId, amount, paymentMethod, transactionId, notes):
+    try:
+        print('in admin_pay_amount')
+        with connection.cursor() as cursor:
+            # 1. Ensure new payment columns exist on gst_tbl_request
+            cursor.execute("""
+                ALTER TABLE gst_tbl_request
+                    ADD COLUMN IF NOT EXISTS col_paid_amount TEXT DEFAULT '',
+                    ADD COLUMN IF NOT EXISTS col_payment_method TEXT DEFAULT '',
+                    ADD COLUMN IF NOT EXISTS col_transaction_id TEXT DEFAULT '',
+                    ADD COLUMN IF NOT EXISTS col_payment_notes TEXT DEFAULT '',
+                    ADD COLUMN IF NOT EXISTS col_paid_at TIMESTAMPTZ;
+            """)
+
+            # Ensure col_balance exists on gst_tbl_ca_cs
+            cursor.execute("""
+                ALTER TABLE gst_tbl_ca_cs
+                    ADD COLUMN IF NOT EXISTS col_balance INT DEFAULT 0;
+            """)
+
+            # 2. Fetch request details and validate status
+            cursor.execute(
+                "SELECT col_status, col_agent_email_id, col_name, col_assigned_ca_cs_id FROM gst_tbl_request WHERE col_id = %s;",
+                (requestId,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                return 'not_found'
+            current_status = row[0]
+            agent_email = row[1]
+            customer_name = row[2]
+            cacs_id = row[3]
+
+            if current_status != 'Completed':
+                return 'refresh data'
+
+            if not cacs_id:
+                return 'cacs_not_assigned'
+
+            # Fetch CACS email
+            cursor.execute("SELECT col_email FROM gst_tbl_ca_cs WHERE col_id = %s;", (cacs_id,))
+            cacs_row = cursor.fetchone()
+            if not cacs_row:
+                return 'cacs_not_found'
+            cacs_email = cacs_row[0]
+
+            # 3. Update request to Paid with payment details
+            cursor.execute(
+                """
+                UPDATE gst_tbl_request
+                SET col_status = 'Paid',
+                    col_paid_amount = %s,
+                    col_payment_method = %s,
+                    col_transaction_id = %s,
+                    col_payment_notes = %s,
+                    col_paid_at = NOW()
+                WHERE col_id = %s;
+                """,
+                (str(amount), paymentMethod, transactionId, notes, requestId)
+            )
+
+            # 4. Record credit transaction for CA/CS
+            cursor.execute(
+                """
+                INSERT INTO gst_tbl_transactions(col_type, col_amount, col_user_email, col_purpose, col_reference_id)
+                VALUES('credit', %s, %s, 'ca_cs_payment', %s);
+                """,
+                (int(amount), cacs_email, str(requestId))
+            )
+
+            # 5. Update CA/CS balance
+            cursor.execute(
+                """
+                UPDATE gst_tbl_ca_cs
+                SET col_balance = col_balance + %s
+                WHERE col_id = %s;
+                """,
+                (int(amount), cacs_id)
+            )
+
+            # 6. Send status email to Agent
+            cursor.execute(
+                "SELECT col_username FROM gst_tbl_login_data WHERE col_email = %s;",
+                (agent_email,)
+            )
+            username_row = cursor.fetchone()
+            agent_username = username_row[0] if username_row else agent_email
+            sendStatusUpdateEmail(
+                agentEmail=agent_email,
+                agentUserName=agent_username,
+                requestId=requestId,
+                requesCustomerName=customer_name,
+                requestStatus='Paid',
+                requestInstruction=f'Amount: ₹{amount} | Method: {paymentMethod} | Txn ID: {transactionId}'
+            )
+
+            print('admin_pay_amount: payment recorded and status set to Paid for CA/CS')
+            return 'success'
+
+    except Exception as e:
+        print(f'Error in admin_pay_amount: {e}')
+        return 'server error'
+
+
 def get_ca_cs_document(ca_cs_id):
     print(ca_cs_id)
     try:
@@ -1660,6 +1784,186 @@ def get_my_cacs_data(token):
         return (None, "Token expired, Please login again!")
     except jwt.InvalidTokenError:
         return (None, "Token expired, Please login again!")
-    except Exception as e:
-        print(e)
         return (None, 'server error')
+
+def update_admin_bank_details(bank_name, account_name, account_number, ifsc_code, upi_id, token):
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        email = payload['email']
+        with connection.cursor() as cursor:
+            # Verify if user is Admin
+            cursor.execute(f"SELECT col_login_type FROM gst_tbl_login_data WHERE col_email='{email}';")
+            data = cursor.fetchone()
+            if not data or data[0] != 'Admin':
+                return "Unauthorized request"
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS gst_tbl_admin_bank_details(
+                    col_id SERIAL PRIMARY KEY,
+                    col_bank_name TEXT,
+                    col_account_name TEXT,
+                    col_account_number TEXT,
+                    col_ifsc_code TEXT,
+                    col_upi_id TEXT,
+                    col_updated_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """)
+            
+            # Check if record exists
+            cursor.execute("SELECT col_id FROM gst_tbl_admin_bank_details LIMIT 1")
+            existing = cursor.fetchone()
+            
+            if existing:
+                cursor.execute("""
+                    UPDATE gst_tbl_admin_bank_details 
+                    SET col_bank_name = %s, col_account_name = %s, col_account_number = %s, col_ifsc_code = %s, col_upi_id = %s, col_updated_at = NOW()
+                    WHERE col_id = %s
+                """, (bank_name, account_name, account_number, ifsc_code, upi_id, existing[0]))
+            else:
+                cursor.execute("""
+                    INSERT INTO gst_tbl_admin_bank_details (col_bank_name, col_account_name, col_account_number, col_ifsc_code, col_upi_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (bank_name, account_name, account_number, ifsc_code, upi_id))
+            
+            return 'success'
+    except jwt.ExpiredSignatureError:
+        return "Token expired, Please login again!"
+    except jwt.InvalidTokenError:
+        return "Invalid token, Please login again!"
+    except Exception as e:
+        print(f"Error in update_admin_bank_details: {e}")
+        return 'server error'
+
+def get_admin_bank_details():
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS gst_tbl_admin_bank_details(
+                    col_id SERIAL PRIMARY KEY,
+                    col_bank_name TEXT,
+                    col_account_name TEXT,
+                    col_account_number TEXT,
+                    col_ifsc_code TEXT,
+                    col_upi_id TEXT,
+                    col_updated_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """)
+            cursor.execute("SELECT col_bank_name, col_account_name, col_account_number, col_ifsc_code, col_upi_id FROM gst_tbl_admin_bank_details LIMIT 1")
+            data = cursor.fetchone()
+            if data:
+                return ({
+                    'bankName': data[0],
+                    'accountName': data[1],
+                    'accountNumber': data[2],
+                    'ifscCode': data[3],
+                    'upiId': data[4]
+                }, 'success')
+            else:
+                return (None, 'not found')
+    except Exception as e:
+        print(f"Error getting admin bank details: {e}")
+        return None, "error"
+
+
+def update_cacs_bank_details(bankName, accountName, accountNumber, ifscCode, upiId, token):
+    try:
+        connection = psycopg2.connect(**db_config)
+        with connection.cursor() as cursor:
+            # Verify CA/CS token and get their ID
+            try:
+                user_data = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+            except jwt.ExpiredSignatureError:
+                return 'invalid_token'
+            except jwt.InvalidTokenError:
+                return 'invalid_token'
+            
+            if not user_data:
+                return 'invalid_token'
+            
+            cacs_email = user_data.get('email')
+            
+            # Find the CA/CS ID
+            cursor.execute("SELECT col_id FROM gst_tbl_ca_cs WHERE col_email = %s;", (cacs_email,))
+            cacs_row = cursor.fetchone()
+            if not cacs_row:
+                return 'cacs_not_found'
+            
+            cacs_id = cacs_row[0]
+
+            cursor.execute("""
+                INSERT INTO gst_tbl_cacs_bank_details 
+                (col_cacs_id, col_bank_name, col_account_name, col_account_number, col_ifsc_code, col_upi_id, col_updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                ON CONFLICT (col_cacs_id) DO UPDATE SET 
+                col_bank_name = EXCLUDED.col_bank_name,
+                col_account_name = EXCLUDED.col_account_name,
+                col_account_number = EXCLUDED.col_account_number,
+                col_ifsc_code = EXCLUDED.col_ifsc_code,
+                col_upi_id = EXCLUDED.col_upi_id,
+                col_updated_at = NOW()
+            """, (cacs_id, bankName, accountName, accountNumber, ifscCode, upiId))
+
+            connection.commit()
+            return 'success'
+    except Exception as e:
+        print(f"Database Error in update_cacs_bank_details: {e}")
+        return 'error'
+    finally:
+        if 'connection' in locals() and connection:
+            connection.close()
+
+
+def get_cacs_bank_details(cacs_id=None, token=None):
+    try:
+        connection = psycopg2.connect(**db_config)
+        with connection.cursor() as cursor:
+            target_cacs_id = None
+            
+            # If an explicit ID is provided (e.g., from Admin), prioritize that
+            if cacs_id:
+                target_cacs_id = int(cacs_id)
+                
+            # Otherwise, if a token is provided, the CA/CS is fetching their own details
+            elif token:
+                try:
+                    user_data = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+                except Exception:
+                    return None, 'invalid_token'
+                
+                if not user_data:
+                    return None, 'invalid_token'
+                
+                cacs_email = user_data.get('email')
+                cursor.execute("SELECT col_id FROM gst_tbl_ca_cs WHERE col_email = %s;", (cacs_email,))
+                cacs_row = cursor.fetchone()
+                if cacs_row:
+                    target_cacs_id = cacs_row[0]
+                
+            if not target_cacs_id:
+               return None, 'cacs_not_found' 
+
+            cursor.execute("""
+                SELECT col_bank_name, col_account_name, col_account_number, col_ifsc_code, col_upi_id, col_updated_at
+                FROM gst_tbl_cacs_bank_details
+                WHERE col_cacs_id = %s;
+            """, (target_cacs_id,))
+            
+            row = cursor.fetchone()
+            if not row:
+                return None, 'not_found'
+                
+            details = {
+                'bankName': row[0],
+                'accountName': row[1],
+                'accountNumber': row[2],
+                'ifscCode': row[3],
+                'upiId': row[4],
+                'updatedAt': row[5].strftime("%Y-%m-%d %H:%M:%S") if row[5] else None
+            }
+            return details, 'success'
+    except Exception as e:
+        print(f"Error getting CA/CS bank details: {e}")
+        return None, "error"
+    finally:
+         if 'connection' in locals() and connection:
+            connection.close()
